@@ -15,6 +15,9 @@
 ## Definición del Problema
 El uso prolongado de pantallas digitales puede estar asociado con fatiga visual y cambios negativos en el patrón de parpadeo de los usuarios. Adicionalmente, las condiciones ambientales desfavorables, como una iluminación inadecuada, afectan el confort visual. Asimismo, la temperatura elevada y la baja humedad relativa del ambiente favorecen la evaporación de la película lagrimal, lo que intensifica la sequedad y el cansancio ocular. La falta de herramientas preventivas automatizadas en tiempo real propicia la aparición de síntomas de cansancio ocular durante las jornadas prolongadas frente al computador.
 
+
+**Justificación:** Un prototipo de bajo costo que combine la detección de parpadeos, el tiempo de exposición y las condiciones ambientales permite avisar al usuario antes de que aparezcan los síntomas de fatiga visual. Así se previene el cansancio ocular durante jornadas prolongadas frente a la pantalla, sin depender de servicios externos y protegiendo la privacidad del usuario, porque no se almacena video.
+
 ---
 
 ## Definición de Objetivos
@@ -26,6 +29,18 @@ Al 10 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de
 | **2. Integrar un nodo IoT ambiental (ESP32 + BH1750 + SHT31) para la captura de iluminación, temperatura y humedad relativa.** | Latencia de recepción de datos de luxes, temperatura (°C) y humedad relativa (%) vía protocolo MQTT inferior a 2 segundos en el percentil 95 ($P_{95}$) de los casos durante una prueba continua de 10 minutos desde el ESP32 hacia el PC. |
 | **3. Implementar un motor de decisión.** | Evaluación en tiempo real de las reglas lógicas unificadas (combinación de parpadeo, tiempo de pantalla, iluminación, temperatura y humedad) determinando la alerta correspondiente con un 95% de coherencia lógica de un conjunto de 20 casos de pruebas definidos. |
 | **4. Implementar un dashboard en aplicación de alertas preventivas.** | Despliegue correcto y en tiempo real de recomendaciones específicas (regla 20-20-20, descanso, ajuste de luz, ventilación o humidificación del espacio) en la interfaz gráfica ante cada evento generado por el motor de decisión. La alerta deberá aparecer en menos de 1 segundo desde que el motor de decisión genere la recomendación, en al menos el 95 % de 20 pruebas. |
+
+
+
+## Criterios de Éxito
+
+| N.° | Criterio de éxito | Meta |
+| :---: | :--- | :--- |
+| 1 | Exactitud en la detección de parpadeos | $\ge85\%$ en pruebas con usuarios |
+| 2 | Latencia de datos ambientales (ESP32 → PC por MQTT) | < 2 s en el percentil 95 durante 10 minutos continuos |
+| 3 | Coherencia lógica del motor de decisión | $\ge95\%$ en 20 casos de prueba definidos |
+| 4 | Tiempo de despliegue de alertas en el dashboard | < 1 s en al menos el 95 % de 20 pruebas |
+| 5 | Entrega del prototipo | A más tardar el 10 de diciembre de 2026 |
 
 ---
 
@@ -62,8 +77,8 @@ Al 10 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de
 | Riesgo | Descripción | Responsable |
 | :--- | :--- | :--- |
 | **1. Falsos positivos o negativos en la detección de parpadeos por mala iluminación o posición frente a la cámara del PC** | Este factor puede degradar la precisión del sistema y provocar alertas inoportunas al usuario. | Desarrollador Principal (Visión Artificial) |
-| **2. Inestabilidad en la conexión Wi-Fi o caída del broker MQTT** | Puede causar la interrupción en la recepción de los datos ambientales (iluminación, temperatura y humedad) enviados por el ESP32. | Desarrollador IoT |
-| **3. El PC disponible no cuente con los recursos** | Este problema tiene como consecuencia un retardo (lag) o posible congelamiento en la interfaz y en el flujo de video de OpenCV. | Arquitecto de Software |
+| **2. Caída o mala configuración del broker MQTT en el PC** | Puede provocar pérdida de mensajes y que el motor de decisión funcione sin los datos ambientales (iluminación, temperatura y humedad) enviados por el ESP32. | Desarrollador IoT |
+| **3. Aumento de la latencia al integrar todos los módulos** | Al ejecutar a la vez la visión artificial, MQTT, el motor de decisión y el dashboard, el tiempo de respuesta puede superar los límites definidos (2 s y 1 s). | Arquitecto de Software |
 | **4. Baja precisión inicial del motor de decisión basado en reglas fijas** | Puede resultar en recomendaciones poco adaptadas al comportamiento real y subjetivo del usuario final. | Gerente del Proyecto |
 | **5. Fallas físicas en el cableado, en el sensor BH1750 o SHT31** | Ocasiona la pérdida temporal o definitiva de la variable de iluminación o humedad ambiental dentro del motor de decisión. | Desarrollador IoT |
 
@@ -73,7 +88,7 @@ Al 10 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de
 
 | Interesado | Poder | Interés | Criterio de éxito | Estrategia |
 | :--- | :--- | :--- | :--- | :--- |
-| **Usuario:** Oscar Eduardo Materon - Guardia de seguridad | Medio | Alto | No desactiva los avisos y los considera útiles. | Gestionar de cerca (entrevistas y pruebas) |
+| **Trabajadores de oficina y estudiantes** | Medio | Alto | No desactivan los avisos y los consideran útiles. | Gestionar de cerca (entrevistas y pruebas) |
 | **Gerente del proyecto** | Alto | Alto | Entrega a tiempo con los objetivos cumplidos. | Gestionar de cerca |
 | **Desarrollador principal** | Medio | Alto | Detecta parpadeos con $\ge85\%$ de exactitud en las pruebas con usuarios. | Gestionar de cerca |
 | **Desarrollador IoT** | Medio | Alto | Luz, temperatura y humedad llegan al PC con una latencia inferior a 2 s en el percentil 95 ($P_{95}$) durante una prueba continua de 10 minutos. | Gestionar de cerca |
@@ -104,20 +119,24 @@ Al 10 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de
 | :--- | :--- | :---: | :---: | :---: |
 | Hardware | ESP32 (microcontrolador con Wi-Fi) | 5 | $38.900 | $194.500 |
 | Hardware | Sensor de luz BH1750 | 1 | $11.500 | $11.500 |
-| Hardware | Sensor de temperatura y humedad SHT31 | 1 | $32.927 | $42.927 |
-| Hardware | Cables, protoboard y fuente de alimentación USB | 1 |$20.000 | $20.000 |
-| Hardware | Imprevistos | 1 |$50.000 | $50.000 |
-| Infraestructura | Broker MQTT (Mosquitto, software libre) en el PC | 1 | 0 | 0 |
-| Desarrollo | Software (Python, OpenCV, MediaPipe) – licencias libres | 1 | 0 | 0 |
-| Desarrollo | Horas de trabajo del equipo | 84 h | $50.000 | $4.200.000|
-| | **Total estimado (sin horas)** | | $163.327 | $318.927 |
-| | **Total estimado (con horas)** | | $213.327 | $4.518.927 |
+| Hardware | Sensor de temperatura y humedad SHT31 | 1 | $42.927 | $42.927 |
+| Hardware | Cables, protoboard y fuente de alimentación USB | 1 | $20.000 | $20.000 |
+| Hardware | Imprevistos | 1 | $50.000 | $50.000 |
+| Infraestructura | Broker MQTT (Mosquitto, software libre) en el PC | 1 | $0 | $0 |
+| Desarrollo | Software (Python, OpenCV, MediaPipe), licencias libres | 1 | $0 | $0 |
+| Desarrollo | Horas de trabajo del equipo | 84 h | $50.000 | $4.200.000 |
+| | **Total estimado (sin horas)** | | | **$318.927** |
+| | **Total estimado (con horas)** | | | **$4.518.927** |
+
+*Nota: se adquieren 5 ESP32 para que cada integrante tenga el suyo.*
 
 ---
 
 ## Firmas
 
+## Aprobación
+
 | Nombre | Rol | Fecha |
 | :--- | :--- | :--- |
-| | Gerente | |
-| | Docente | |
+| Karol Nasner | Gerente del Proyecto | [23/10/2026] |
+| Alvaro Salazar Victoria | Docente | [DD/MM/2026] |
