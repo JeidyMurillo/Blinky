@@ -18,7 +18,7 @@ El uso prolongado de pantallas digitales puede estar asociado con fatiga visual 
 ---
 
 ## Definición de Objetivos
-Al 3 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de exactitud, reciba luz, temperatura y humedad en menos de 2 s en el 95% de las transmisiones, y muestre la recomendación correcta en el dashboard.
+Al 10 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de exactitud, reciba luz, temperatura y humedad en menos de 2 s en el 95% de las transmisiones, y muestre la recomendación correcta en el dashboard.
 
 | Objetivos | Criterios de evaluación de los objetivos |
 | :--- | :--- |
