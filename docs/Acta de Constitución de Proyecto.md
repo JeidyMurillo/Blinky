@@ -5,7 +5,7 @@
 | **Nombre del Proyecto:** | Sistema inteligente para la prevención de fatiga visual mediante detección de parpadeos, monitoreo del tiempo de exposición a pantallas y condiciones ambientales (iluminación, temperatura y humedad). |
 | **Patrocinador:** | Equipo del Proyecto |
 | **Gerente del proyecto:** | Karol Nasner |
-| **Cliente:** | Nombre del usuario específico |
+| **Cliente:** | Oscar Eduardo Materon (Guardia de Seguridad) |
 | **Responsable:** | Equipo de Desarrollo |
 | **Fecha de Inicio esperada:** | 26 oct 26 |
 | **Fecha de finalización esperada:** | 10 dic 26 |
