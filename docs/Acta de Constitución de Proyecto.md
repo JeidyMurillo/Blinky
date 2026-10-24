@@ -73,7 +73,7 @@ Al 3 de diciembre, entregar un prototipo que detecte parpadeos con $\ge85\%$ de 
 
 | Interesado | Poder | Interés | Criterio de éxito | Estrategia |
 | :--- | :--- | :--- | :--- | :--- |
-| **Trabajadores de oficina y estudiantes** | Medio | Alto | No desactivan los avisos y los consideran útiles. | Gestionar de cerca (entrevistas y pruebas) |
+| **Usuario:** Oscar Eduardo Materon - Guardia de seguridad | Medio | Alto | No desactiva los avisos y los considera útiles. | Gestionar de cerca (entrevistas y pruebas) |
 | **Gerente del proyecto** | Alto | Alto | Entrega a tiempo con los objetivos cumplidos. | Gestionar de cerca |
 | **Desarrollador principal** | Medio | Alto | Detecta parpadeos con $\ge85\%$ de exactitud en las pruebas con usuarios. | Gestionar de cerca |
 | **Desarrollador IoT** | Medio | Alto | Luz, temperatura y humedad llegan al PC con una latencia inferior a 2 s en el percentil 95 ($P_{95}$) durante una prueba continua de 10 minutos. | Gestionar de cerca |
