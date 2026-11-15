@@ -1,0 +1,12 @@
+customtkinter>=5.2.2
+Pillow>=11.0
+numpy>=2.0
+opencv-python-headless>=4.10
+ruamel.yaml>=0.18
+paho-mqtt>=2.1
+
+# Detección de landmarks faciales (API Tasks de MediaPipe 1.x).
+# En Windows conviene instalarlo sin dependencias para no duplicar OpenCV:
+#   pip install --no-deps mediapipe==1.2.3
+#   pip install absl-py flatbuffers matplotlib sounddevice
+mediapipe>=1.2
