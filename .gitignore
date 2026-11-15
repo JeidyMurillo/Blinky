@@ -427,3 +427,42 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---------------------------------------------------------------------------
+# Proyecto Blinky
+# ---------------------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# SQLite (histórico local)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Calibración EAR aprendida en esta máquina
+blinky_calibration.json
+*.tmp
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Configuración local del ESP32
+firmware/esp32/src/config.local.h
+
+# Entorno local y editor
+.env
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

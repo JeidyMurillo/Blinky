@@ -1,0 +1,90 @@
+# Configuración de Blinky. Los valores por defecto viven en core/config.py.
+
+camera:
+  index: 0
+  width: 1280
+  height: 720
+  fps: 30
+
+session:
+  initial_seconds: 0        # cada ejecución empieza en cero
+  initial_blinks: 0
+  blink_rate: 0
+  initial_continuous_seconds: 0
+  initial_breaks: 0
+
+vision:
+  ear_threshold: 0.21       # umbral inicial; la calibración lo ajusta por usuario
+  reopen_margin: 0.02       # histéresis: se abre por encima de umbral + margen
+  min_closed_frames: 2      # frames cerrados mínimos para confirmar un parpadeo
+  max_closed_frames: 15     # reserva para secuencias sin timestamp
+  min_blink_duration_ms: 0  # duración mínima; 0 = no descartar parpadeos rápidos
+  max_blink_duration_ms: 800  # por encima se clasifica como cierre largo
+  long_closure_seconds: 1.5   # cierre prolongado (fatiga/microsueño)
+  blink_window_seconds: 60  # ventana para tasa, PERCLOS e intervalos
+  min_rate_window_seconds: 10  # evita tasas irreales al inicio
+  calibration_seconds: 4    # duración de la calibración inicial
+  calibration_min_samples: 24
+  calibration_ratio: 0.60   # umbral = EAR abierto (p75) * ratio
+  calibration_floor: 0.06   # nunca bajar de este umbral
+  calibration_ceiling: 0.28 # ni superar este
+  calibration_path: ""      # vacío = app/blinky_calibration.json
+  auto_calibrate: true      # recalibrar al iniciar cada sesión
+  smoothing_alpha: 0.65     # 1.0 desactiva el suavizado EMA
+  processing_width: 640     # se reduce el frame antes de MediaPipe
+  use_blendshapes: true     # usar eyeBlink como señal auxiliar
+  blink_score_threshold: 0.65
+  blink_cooldown_seconds: 0.06
+  face_grace_seconds: 0.4   # tolerancia a frames sin rostro
+  min_confidence: 0.35
+  model_path: ""            # vacío = caché del usuario (se descarga una vez)
+  allow_model_download: true
+
+exposure:
+  absent_after_seconds: 20  # ausencia sostenida que se cuenta como pausa
+
+thresholds:
+  blink_rate_low: 15        # parpadeos por minuto considerados bajos
+  blink_warmup_seconds: 20  # no alertar por baja tasa al arrancar
+  perclos_high: 0.15        # 15% del tiempo con ojos cerrados en la ventana
+  long_closures_per_minute: 3
+  continuous_minutes: 20    # minutos continuos antes de sugerir pausa
+  lux_min: 300
+  lux_max: 1000
+  temperature_min: 18
+  temperature_max: 26
+  humidity_min: 30
+  humidity_max: 60
+
+mqtt:
+  enabled: false            # true cuando el ESP32 y el broker estén activos
+  host: 127.0.0.1
+  port: 1883
+  keepalive: 30
+  qos: 0                    # telemetría ambiental: QoS 0, retain false
+  topics:
+    ambient: fatiga/ambient
+    status: fatiga/ambient/status
+    blink: fatiga/blink
+
+ambient:
+  stale_after_seconds: 15   # sin lecturas durante este tiempo -> desconectado
+
+# Fuente de datos del runtime:
+#   ui        -> deja la simulación dentro de AppState (comportamiento anterior)
+#   simulated -> runtime/simulated.py publica eventos sin hardware
+#   real      -> runtime/pipeline.py usa la cámara compartida con la UI
+runtime:
+  source: real              # real = cámara + MediaPipe; simulated = demo sin hardware
+  publish_seconds: 0.5
+  frame_interval_ms: 40     # ~25 fps de procesamiento de visión
+  auto_start_camera: false  # true si quieres que el pipeline abra la cámara solo
+  simulated:
+    blink_rate: 18.0
+    ambient_seconds: 5.0
+    jitter: 2.0
+
+storage:
+  enabled: true
+  path: ""                  # vacío = app/blinky.db
+  retention_days: 90
