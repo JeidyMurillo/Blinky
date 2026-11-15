@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fatiga-visual.local/contracts/ambient.schema.json",
+  "title": "AmbientReading",
+  "description": "Lectura ambiental publicada por el ESP32 en fatiga/ambient. Contrato 1.0.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "lux",
+    "temperature",
+    "humidity"
+  ],
+  "properties": {
+    "lux": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 200000,
+      "description": "Iluminancia medida por el BH1750 en lux."
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": -40,
+      "maximum": 85,
+      "description": "Temperatura medida por el SHT31 en grados Celsius."
+    },
+    "humidity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Humedad relativa medida por el SHT31 en porcentaje."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Contador incremental del firmware para detectar perdidas."
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Epoca en milisegundos. Opcional: el ESP32 puede no tener hora."
+    },
+    "firmware": {
+      "type": "string",
+      "maxLength": 32,
+      "description": "Version del firmware, por ejemplo 1.0.0."
+    }
+  },
+  "examples": [
+    {
+      "lux": 420.5,
+      "temperature": 23.4,
+      "humidity": 48.0,
+      "seq": 128
+    }
+  ]
+}
