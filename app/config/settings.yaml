@@ -57,7 +57,7 @@ thresholds:
   humidity_max: 60
 
 mqtt:
-  enabled: false            # true cuando el ESP32 y el broker estén activos
+  enabled: true            # true cuando el ESP32 y el broker estén activos
   host: 127.0.0.1
   port: 1883
   keepalive: 30

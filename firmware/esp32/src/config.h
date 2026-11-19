@@ -8,10 +8,10 @@
 
 #pragma once
 
-#define WIFI_SSID "TU_WIFI"
-#define WIFI_PASSWORD "TU_PASSWORD"
+#define WIFI_SSID "KOALA-ULTRA"
+#define WIFI_PASSWORD "1061528847"
 
-#define MQTT_HOST "192.168.1.100"
+#define MQTT_HOST "192.168.18.31"
 #define MQTT_PORT 1883
 #define MQTT_CLIENT_ID "blinky-esp32"
 #define MQTT_KEEPALIVE_SECONDS 30

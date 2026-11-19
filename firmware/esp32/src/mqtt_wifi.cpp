@@ -31,6 +31,9 @@ static void connectWifi() {
     }
     lastWifiAttempt = now;
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
+    WiFi.setTxPower(WIFI_POWER_5dBm);
+    delay(200);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     Serial.println("Conectando WiFi...");
 }

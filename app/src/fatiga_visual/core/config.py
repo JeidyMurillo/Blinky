@@ -72,7 +72,7 @@ DEFAULTS = {
         "humidity_max": 60,
     },
     "mqtt": {
-        "enabled": False,
+        "enabled": True,
         "host": "127.0.0.1",
         "port": 1883,
         "keepalive": 30,
