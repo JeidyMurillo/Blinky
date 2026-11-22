@@ -16,7 +16,7 @@ import queue
 import random
 from datetime import datetime, timedelta
 
-from fatiga_visual.core.models import AmbientReading, Recommendation
+from fatiga_visual.core.models import AmbientReading, FaceOverlay, Recommendation
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 
 
@@ -39,8 +39,12 @@ class AppState:
         self.confidence = 1.0
         self.calibration_progress = 1.0
         self.vision_status = None
+        self.face_overlay = FaceOverlay.empty()
         self.last_blink_at = None
         self.last_blink_kind = None
+        self.break_history = []
+        self.active_break = None
+        self.last_break_at = None
         self.running = True
         self.camera_on = False
         self.alert_dismissed = False
@@ -104,11 +108,42 @@ class AppState:
         if bus is not None:
             bus.subscribe("blink.metrics", self.update_blink_metrics)
             bus.subscribe("exposure.metrics", self.update_exposure)
+            bus.subscribe("exposure.break", self.update_break_event)
             bus.subscribe("ambient.reading", self.update_ambient)
             bus.subscribe("ambient.status", self.update_ambient_status)
             bus.subscribe("blink.event", self.update_blink_event)
             bus.subscribe("vision.status", self.update_vision_status)
+            bus.subscribe("vision.landmarks", self.update_face_overlay)
             bus.subscribe("decision.recommendation", self.add_recommendation)
+
+    @property
+    def continuous_seconds(self):
+        """Tiempo continuo frente a la pantalla (se reinicia tras una pausa)."""
+        return int(getattr(self.exposure, "continuous_seconds", 0))
+
+    @property
+    def break_after_seconds(self):
+        return max(1, int(self.settings.get("thresholds.continuous_minutes", 20) * 60))
+
+    @property
+    def break_due(self):
+        return self.continuous_seconds >= self.break_after_seconds
+
+    @property
+    def break_active(self):
+        return self.active_break is not None
+
+    @property
+    def last_break(self):
+        return self.break_history[0] if self.break_history else None
+
+    @property
+    def user_present(self):
+        """Presión de presencia para el cronómetro; simulación cuenta como presente."""
+        status = getattr(self, "vision_status", None)
+        if status is None or getattr(status, "backend", "") == "simulated":
+            return True
+        return bool(getattr(status, "face_found", False))
 
     def subscribe(self, listener):
         self._listeners.append(listener)
@@ -161,7 +196,19 @@ class AppState:
 
     def set_camera(self, active):
         self.camera_on = active
+        if not active:
+            self.clear_face_overlay()
+            # Camara apagada no es una pausa válida.
+            self.active_break = None
         self.emit("camera")
+
+    def clear_face_overlay(self):
+        self.face_overlay = FaceOverlay.empty()
+
+    def update_face_overlay(self, overlay):
+        # Dato de alta frecuencia: el widget lo lee directo. No va a la cola de
+        # eventos de Tk para no llenarla con decenas de topics por segundo.
+        self.face_overlay = overlay if overlay is not None else FaceOverlay.empty()
 
     def set_alert_dismissed(self, dismissed=True):
         self.alert_dismissed = dismissed
@@ -228,6 +275,18 @@ class AppState:
         self.exposure.continuous_seconds = metrics.continuous_seconds
         self.exposure.breaks_taken = metrics.breaks_taken
         self.emit("tick")
+
+    def update_break_event(self, event):
+        if event is None:
+            return
+        if getattr(event, "kind", "finished") == "started":
+            self.active_break = event
+        else:
+            self.active_break = None
+            self.last_break_at = getattr(event, "timestamp", None)
+            self.break_history.insert(0, event)
+            del self.break_history[20:]
+        self.emit("break")
 
     def update_ambient(self, reading):
         if reading is None:

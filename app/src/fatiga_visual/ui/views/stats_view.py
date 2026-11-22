@@ -153,9 +153,11 @@ class StatsView(ctk.CTkFrame):
         body.pack(fill="x", padx=17, pady=(13, 17))
         rows = [
             ("clock", "Tiempo activo", "00:00:00"),
+            ("clock", "Tiempo continuo", "00:00:00"),
             ("eye", "Parpadeos", "0"),
             ("chart", "Ritmo por minuto", "0"),
             ("pause", "Pausas tomadas", "0"),
+            ("pause", "Ultima pausa", "—"),
         ]
         for index, (icon, title, value) in enumerate(rows):
             row = ctk.CTkFrame(body, fg_color="transparent")
@@ -200,9 +202,20 @@ class StatsView(ctk.CTkFrame):
             self.average_label.configure(text=f"Promedio {average:.0f} al dia")
 
         self.summary["Tiempo activo"].configure(text=format_clock(self.state.session_seconds))
+        self.summary["Tiempo continuo"].configure(
+            text=format_clock(self.state.continuous_seconds)
+        )
         self.summary["Parpadeos"].configure(text=str(self.state.blinks))
         self.summary["Ritmo por minuto"].configure(text=f"{self.state.blink_rate:.0f}")
         self.summary["Pausas tomadas"].configure(text=str(self.state.exposure.breaks_taken))
+        last_break = getattr(self.state, "last_break", None)
+        self.summary["Ultima pausa"].configure(
+            text=(
+                format_clock(int(getattr(last_break, "duration_seconds", 0)))
+                if last_break is not None
+                else "—"
+            )
+        )
         self.ambient_panel.refresh(self.state.ambient)
 
         continuous = self.state.exposure.continuous_seconds // 60

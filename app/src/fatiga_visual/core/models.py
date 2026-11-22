@@ -52,6 +52,21 @@ class ExposureMetrics:
 
 
 @dataclass(frozen=True)
+class BreakEvent:
+    """Pausa validada frente a la pantalla.
+
+    `kind` es "started" cuando la ausencia supera el mínimo configurable y
+    "finished" cuando el usuario vuelve a ser detectado.
+    """
+
+    timestamp: datetime
+    started_at: datetime
+    kind: str = "finished"
+    duration_seconds: float = 0.0
+    continuous_before_seconds: float = 0.0
+
+
+@dataclass(frozen=True)
 class AmbientReading:
     """Lectura validada del ESP32 recibida por MQTT."""
 
@@ -89,6 +104,30 @@ class VisionFrame:
     landmarks: Any = None
     blink_score: float | None = None
     confidence: float = 1.0
+
+
+@dataclass(frozen=True)
+class FaceOverlay:
+    """Puntos faciales normalizados (0..1) para dibujar sobre el video.
+
+    Corresponden al fotograma que `CameraStream` ya entrega a la UI (volteado
+    horizontalmente). La UI solo los escala al tamaño del widget, así que no
+    necesita MediaPipe ni el modelo. Una instancia vacía significa "sin rostro".
+    """
+
+    timestamp: datetime
+    oval: tuple[tuple[float, float], ...] = ()
+    left_eye: tuple[tuple[float, float], ...] = ()
+    right_eye: tuple[tuple[float, float], ...] = ()
+    irises: tuple[tuple[float, float], ...] = ()
+
+    @property
+    def visible(self):
+        return bool(self.oval or self.left_eye or self.right_eye)
+
+    @classmethod
+    def empty(cls):
+        return cls(timestamp=datetime.now())
 
 
 @dataclass(frozen=True)

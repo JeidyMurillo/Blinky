@@ -115,6 +115,7 @@ class MainView(ctk.CTkFrame):
             card,
             self._toggle_camera,
             stream=getattr(self.state, "camera_stream", None),
+            state=self.state,
         )
         self.feed.on_lost = self._on_camera_lost
         self.feed.pack(padx=17, pady=(15, 0))

@@ -3,6 +3,8 @@
 Qué va aquí:
 - Presentar el feed 880x480 con overlay y estados off/connecting/on/error.
 - Consultar vision.camera.CameraStream desde el hilo de Tk con after().
+- Dibujar los landmarks que el pipeline publica en AppState.face_overlay; si no
+  hay rostro, mostrar una guía genérica.
 - Avisar a la vista cuando la camara se pierde.
 
 No abrir cv2 aquí: toda la captura pertenece a vision.camera.
@@ -24,15 +26,17 @@ from fatiga_visual.ui.theme import (
     render_icon,
 )
 from fatiga_visual.vision.camera import CameraStream
+from fatiga_visual.vision.overlay import project_overlay
 
 
 class CameraWidget(ctk.CTkFrame):
-    def __init__(self, master, on_toggle, stream=None):
+    def __init__(self, master, on_toggle, stream=None, state=None):
         super().__init__(master, width=FEED_W, height=FEED_H, fg_color="#1b2130", corner_radius=11)
         self.pack_propagate(False)
         self.on_toggle = on_toggle
         self.on_lost = None
         self.stream = stream or CameraStream()
+        self.state = state
         self._state = "off"
         self._on_ready = None
         self._start_job = None
@@ -180,7 +184,6 @@ class CameraWidget(ctk.CTkFrame):
 
     def _make_live_overlay(self):
         width, height = FEED_W, FEED_H
-        cx, cy = width / 2, height / 2
         overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
         for y in range(92):
@@ -194,18 +197,6 @@ class CameraWidget(ctk.CTkFrame):
                 [(0, y), (width, y)],
                 fill=(10, 14, 22, int(65 * t ** 1.3)),
             )
-        draw.ellipse(
-            [cx - width * 0.195, cy - height * 0.32, cx + width * 0.195, cy + height * 0.32],
-            outline=(117, 244, 195, 190),
-            width=2,
-        )
-        draw.text(
-            (cx, cy + height * 0.32 + 20),
-            "Rostro detectado",
-            font=pil_font(9, True),
-            fill=(122, 240, 194, 240),
-            anchor="mm",
-        )
         draw.ellipse([14, 21, 21, 28], fill=(67, 220, 156, 255))
         draw.text(
             (30, 24.5),
@@ -216,7 +207,55 @@ class CameraWidget(ctk.CTkFrame):
         )
         return overlay
 
-    def _compose_live(self, rgb, fps):
+    def _draw_face_guide(self, draw):
+        """Guía genérica cuando no hay landmarks (fuente simulada o sin rostro)."""
+        cx, cy = FEED_W / 2, FEED_H / 2
+        draw.ellipse(
+            [
+                cx - FEED_W * 0.195,
+                cy - FEED_H * 0.32,
+                cx + FEED_W * 0.195,
+                cy + FEED_H * 0.32,
+            ],
+            outline=(117, 244, 195, 190),
+            width=2,
+        )
+        draw.text(
+            (cx, cy + FEED_H * 0.32 + 20),
+            "Rostro detectado",
+            font=pil_font(9, True),
+            fill=(122, 240, 194, 240),
+            anchor="mm",
+        )
+
+    def _draw_landmarks(self, draw, overlay, source_w, source_h):
+        """Dibuja contorno facial, ojos e iris sobre el feed ya recortado."""
+        points = project_overlay(overlay, source_w, source_h, FEED_W, FEED_H)
+        oval = points["oval"]
+        if len(oval) > 2:
+            draw.line(list(oval) + [oval[0]], fill=(117, 244, 195, 200), width=2)
+        for key in ("left_eye", "right_eye"):
+            eye = points[key]
+            if len(eye) > 2:
+                draw.line(list(eye) + [eye[0]], fill=(126, 214, 255, 235), width=2)
+        for x, y in points["irises"]:
+            draw.ellipse(
+                [x - 3, y - 3, x + 3, y + 3],
+                fill=(255, 255, 255, 235),
+                outline=(117, 244, 195, 255),
+                width=1,
+            )
+        if oval:
+            bottom = max(y for _, y in oval)
+            draw.text(
+                (FEED_W / 2, min(FEED_H - 16, bottom + 20)),
+                "Rostro detectado",
+                font=pil_font(9, True),
+                fill=(122, 240, 194, 240),
+                anchor="mm",
+            )
+
+    def _compose_live(self, rgb, fps, overlay=None):
         source_h, source_w = rgb.shape[:2]
         frame = Image.fromarray(rgb)
         scale = max(FEED_W / source_w, FEED_H / source_h)
@@ -227,7 +266,11 @@ class CameraWidget(ctk.CTkFrame):
         top = (new_h - FEED_H) // 2
         frame = frame.crop((left, top, left + FEED_W, top + FEED_H)).convert("RGBA")
         frame = Image.alpha_composite(frame, self.live_overlay)
-        draw = ImageDraw.Draw(frame)
+        draw = ImageDraw.Draw(frame, "RGBA")
+        if overlay is not None and getattr(overlay, "visible", False):
+            self._draw_landmarks(draw, overlay, source_w, source_h)
+        else:
+            self._draw_face_guide(draw)
         fps_text = f"{source_h}p - {max(1, round(fps or 30))} FPS"
         draw.text(
             (FEED_W - 15, 24.5),
@@ -264,6 +307,8 @@ class CameraWidget(ctk.CTkFrame):
         self._on_ready = on_ready
         self._dead_reported = False
         self._last_seq = 0
+        if self.state is not None and hasattr(self.state, "clear_face_overlay"):
+            self.state.clear_face_overlay()
         self.live_image.configure(
             light_image=self.image_active.cget("light_image"),
             dark_image=self.image_active.cget("dark_image"),
@@ -295,7 +340,8 @@ class CameraWidget(ctk.CTkFrame):
         seq, rgb, fps = self.stream.read_frame()
         if rgb is not None and seq != self._last_seq:
             self._last_seq = seq
-            frame = self._compose_live(rgb, fps)
+            overlay = getattr(self.state, "face_overlay", None) if self.state else None
+            frame = self._compose_live(rgb, fps, overlay)
             self.live_image.configure(light_image=frame, dark_image=frame)
         if self.stream.state() == CameraStream.ERROR:
             if not self._dead_reported:
@@ -315,6 +361,8 @@ class CameraWidget(ctk.CTkFrame):
                     pass
                 setattr(self, attribute, None)
         self.stream.stop()
+        if self.state is not None and hasattr(self.state, "clear_face_overlay"):
+            self.state.clear_face_overlay()
         self._last_seq = 0
         self._dead_reported = False
         self._on_ready = None

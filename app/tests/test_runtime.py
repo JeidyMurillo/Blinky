@@ -1,12 +1,19 @@
 import sys
 import time
+import types
 import unittest
+from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from fatiga_visual.ambient.ambient_state import AmbientState
 from fatiga_visual.core.config import Settings
 from fatiga_visual.core.events import EventBus
+from fatiga_visual.core.models import AmbientReading, VisionFrame
+from fatiga_visual.runtime import pipeline as pipeline_module
+from fatiga_visual.runtime.pipeline import RuntimePipeline
 from fatiga_visual.runtime.simulated import SimulatedPipeline
 from fatiga_visual.ui.state import AppState
 
@@ -62,6 +69,39 @@ class SimulatedRuntimeTests(unittest.TestCase):
         pipeline.stop()
         pipeline.stop()
 
+    def test_simulated_ambient_values_generate_recommendations(self):
+        """Los valores configurados llegan al motor y a las recomendaciones de la UI."""
+        settings = Settings(
+            {
+                "runtime": {
+                    "publish_seconds": 0.05,
+                    "simulated": {
+                        "blink_rate": 18.0,
+                        "ambient_seconds": 0.05,
+                        "jitter": 0.0,
+                        "ambient_lux": 120.0,
+                        "ambient_temperature": 29.0,
+                        "ambient_humidity": 20.0,
+                    },
+                }
+            }
+        )
+        state = AppState(settings, self.bus, simulate=False, seed_demo=False)
+        received = []
+        self.bus.subscribe("decision.recommendation", received.append)
+        pipeline = SimulatedPipeline(settings, self.bus)
+        pipeline.start()
+        try:
+            self.assertTrue(wait_for(lambda: len(received) >= 3))
+        finally:
+            pipeline.stop()
+
+        reading = self.received["ambient.reading"][-1]
+        self.assertLess(reading.lux, 300)
+        expected = {"light-low", "temperature-high", "humidity-low"}
+        self.assertTrue(expected.issubset({item.id for item in received}))
+        self.assertTrue(expected.issubset({item.id for item in state.recommendations}))
+
 
 class ExternalStateTests(unittest.TestCase):
     def test_app_state_does_not_simulate_when_runtime_owns_data(self):
@@ -92,6 +132,82 @@ class ExternalStateTests(unittest.TestCase):
         finally:
             pipeline.stop()
         self.assertTrue(state.drain_events())
+
+
+class RealPipelineAmbientTests(unittest.TestCase):
+    """Las lecturas del nodo IoT (AmbientState) alimentan al motor de reglas."""
+
+    ambient_ids = {
+        "light-low",
+        "light-high",
+        "temperature-low",
+        "temperature-high",
+        "humidity-low",
+        "humidity-high",
+        "blink-light",
+    }
+
+    def _pipeline(self, bus, ambient_state):
+        settings = Settings(
+            {
+                "vision": {
+                    "auto_calibrate": False,
+                    "use_blendshapes": False,
+                    "face_grace_seconds": 0.0,
+                    "calibration_path": "",
+                }
+            }
+        )
+        detector = types.SimpleNamespace(
+            available=True,
+            backend="fake",
+            error="",
+            process=lambda frame, timestamp=None: VisionFrame(
+                timestamp=datetime.now(), image=frame, landmarks=None, confidence=1.0
+            ),
+            close=lambda: None,
+        )
+        camera = types.SimpleNamespace(state=lambda: "running")
+        with mock.patch.object(pipeline_module, "FaceLandmarkDetector", return_value=detector):
+            return RuntimePipeline(settings, bus, camera=camera, ambient_state=ambient_state)
+
+    def _evaluate(self, lux, temperature, humidity, stale=False):
+        bus = EventBus()
+        received = []
+        bus.subscribe("decision.recommendation", received.append)
+        reading = AmbientReading(
+            timestamp=datetime.now(),
+            lux=lux,
+            temperature_c=temperature,
+            humidity=humidity,
+            connected=True,
+        )
+        if stale:
+            # AmbientState marca la lectura vencida con connected=False.
+            ambient_state = types.SimpleNamespace(
+                latest=lambda: AmbientReading(**{**reading.__dict__, "connected": False})
+            )
+        else:
+            ambient_state = AmbientState(stale_after_seconds=15)
+            ambient_state.update(reading)
+        pipeline = self._pipeline(bus, ambient_state)
+        try:
+            pipeline._sample(1.0, time.monotonic())
+        finally:
+            pipeline.detector.close()
+        return {item.id for item in received}
+
+    def test_each_out_of_range_variable_warns(self):
+        ids = self._evaluate(lux=120.0, temperature=29.0, humidity=20.0)
+        self.assertTrue({"light-low", "temperature-high", "humidity-low"}.issubset(ids))
+
+    def test_in_range_values_warn_nothing(self):
+        ids = self._evaluate(lux=500.0, temperature=23.4, humidity=48.0)
+        self.assertFalse(self.ambient_ids & ids)
+
+    def test_stale_iot_reading_warns_nothing(self):
+        ids = self._evaluate(lux=120.0, temperature=29.0, humidity=20.0, stale=True)
+        self.assertFalse(self.ambient_ids & ids)
 
 
 if __name__ == "__main__":

@@ -57,10 +57,16 @@ def long_exposure(minutes):
 def lighting_out_of_range(lux, low=True):
     if low:
         title = "Aumenta la iluminacion"
-        message = f"La luz actual es de {lux:.0f} lux. Evita trabajar con poca luz para reducir la fatiga."
+        message = (
+            f"Hay {lux:.0f} lux en tu espacio. Enciende una lampara o abre una cortina "
+            "para trabajar con luz suficiente y reducir el esfuerzo visual."
+        )
     else:
         title = "Reduce el brillo del entorno"
-        message = f"La luz actual es de {lux:.0f} lux. Puede producir deslumbramiento."
+        message = (
+            f"Hay {lux:.0f} lux en tu espacio. Cierra una cortina o baja el brillo "
+            "de la pantalla para evitar deslumbramiento."
+        )
     return Recommendation(
         id="light-low" if low else "light-high",
         title=title,
@@ -70,14 +76,62 @@ def lighting_out_of_range(lux, low=True):
     )
 
 
-def ventilate(temperature, humidity):
+def temperature_out_of_range(temperature, low=True):
+    if low:
+        title = "Sube la temperatura del espacio"
+        message = (
+            f"La temperatura es de {temperature:.1f} C. Ajusta la calefaccion o abrigate "
+            "para trabajar en un ambiente confortable."
+        )
+    else:
+        title = "Baja la temperatura del espacio"
+        message = (
+            f"La temperatura es de {temperature:.1f} C. Ventila la habitacion o baja "
+            "la calefaccion para evitar el aire calido."
+        )
     return Recommendation(
-        id="ventilate",
-        title="Ventila el espacio",
-        message=(
-            f"Temperatura {temperature:.1f} C y humedad {humidity:.0f} %. "
-            "Renueva el aire para mantener una atmosfera comoda."
-        ),
+        id="temperature-low" if low else "temperature-high",
+        title=title,
+        message=message,
         severity="low",
+        created_at=datetime.now(),
+    )
+
+
+def humidity_out_of_range(humidity, low=True):
+    if low:
+        title = "El aire esta muy seco"
+        message = (
+            f"La humedad es de {humidity:.0f} %. Toma agua, ventila y aleja el flujo "
+            "directo del aire acondicionado para no resecar tus ojos."
+        )
+    else:
+        title = "El aire esta muy humedo"
+        message = (
+            f"La humedad es de {humidity:.0f} %. Ventila el espacio para mantener "
+            "un ambiente comodo."
+        )
+    return Recommendation(
+        id="humidity-low" if low else "humidity-high",
+        title=title,
+        message=message,
+        severity="medium" if low else "low",
+        created_at=datetime.now(),
+    )
+
+
+def combined_low_blink_bad_light(blink_rate, lux, low=True):
+    """Recomendacion especifica cuando se combinan poco parpadeo y mala luz (HU-13)."""
+    condition = "poca luz" if low else "exceso de luz"
+    fix = "Enciende una lampara" if low else "Cierra una cortina o baja el brillo"
+    return Recommendation(
+        id="blink-light",
+        title="Corrige la luz y descansa la vista",
+        message=(
+            f"Parpadeas {blink_rate:.0f} veces por minuto y hay {condition} ({lux:.0f} lux). "
+            f"{fix}, y mira un punto lejano durante 20 segundos."
+        ),
+        severity="high",
+        action="Ver recomendaciones",
         created_at=datetime.now(),
     )

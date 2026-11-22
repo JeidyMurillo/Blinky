@@ -54,10 +54,11 @@ DEFAULTS = {
         "blink_cooldown_seconds": 0.06,
         "face_grace_seconds": 0.4,
         "min_confidence": 0.35,
+        "overlay_publish_seconds": 0.05,
         "model_path": "",
         "allow_model_download": True,
     },
-    "exposure": {"absent_after_seconds": 20},
+    "exposure": {"absent_after_seconds": 10, "break_min_seconds": 10},
     "thresholds": {
         "blink_rate_low": 15,
         "blink_warmup_seconds": 20,
@@ -89,7 +90,14 @@ DEFAULTS = {
         "publish_seconds": 0.5,
         "frame_interval_ms": 40,
         "auto_start_camera": False,
-        "simulated": {"blink_rate": 18.0, "ambient_seconds": 5.0, "jitter": 2.0},
+        "simulated": {
+            "blink_rate": 18.0,
+            "ambient_seconds": 5.0,
+            "jitter": 2.0,
+            "ambient_lux": 420.0,
+            "ambient_temperature": 23.4,
+            "ambient_humidity": 48.0,
+        },
     },
     "storage": {"enabled": True, "path": "", "retention_days": 90},
 }
