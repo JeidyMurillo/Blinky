@@ -62,6 +62,9 @@ DEFAULTS = {
     "thresholds": {
         "blink_rate_low": 15,
         "blink_warmup_seconds": 20,
+        "blink_low_window_seconds": 60,
+        "blink_low_min_samples": 3,
+        "blink_low_max_gap_seconds": 60,
         "perclos_high": 0.15,
         "long_closures_per_minute": 3,
         "continuous_minutes": 20,

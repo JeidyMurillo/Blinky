@@ -10,14 +10,21 @@ from datetime import datetime
 from fatiga_visual.core.models import Recommendation
 
 
-def low_blink_rate(blink_rate):
+def low_blink_rate(blink_rate, threshold=None, sustained_seconds=None):
+    message = (
+        f"Tu frecuencia de parpadeo es de {blink_rate:.0f} por minuto. "
+        "Una rutina breve puede ayudarte a relajar la vista."
+    )
+    if threshold is not None and sustained_seconds is not None:
+        message = (
+            f"Lleva {sustained_seconds:.0f} s con {blink_rate:.0f} parpadeos por minuto, "
+            f"por debajo del umbral de {threshold:.0f}. "
+            "Una rutina breve puede ayudarte a relajar la vista."
+        )
     return Recommendation(
         id="blink-low",
         title="Tus ojos necesitan una pausa",
-        message=(
-            f"Tu frecuencia de parpadeo es de {blink_rate:.0f} por minuto. "
-            "Una rutina breve puede ayudarte a relajar la vista."
-        ),
+        message=message,
         severity="high",
         action="Ver recomendaciones",
         created_at=datetime.now(),

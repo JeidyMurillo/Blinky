@@ -203,6 +203,12 @@ También puedes indicar otro modelo con `vision.model_path` o con la variable
 La regla `prolonged_eye_closure` alerta cuando `perclos` o los cierres largos
 superan los umbrales de `settings.yaml`.
 
+La alerta de baja tasa de parpadeo se confirma con una ventana: la tasa debe
+permanecer por debajo de `thresholds.blink_rate_low` durante
+`blink_low_window_seconds` con al menos `blink_low_min_samples` muestras. Un
+valor exactamente en el umbral no alerta, y los datos faltantes, sin confianza
+o dentro de `blink_warmup_seconds` reinician la ventana.
+
 ## Cronómetro de tiempo continuo
 
 El panel de Monitoreo muestra un cronómetro `HH:MM:SS` con el tiempo que llevas
