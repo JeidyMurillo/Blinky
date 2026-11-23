@@ -44,6 +44,7 @@ fatiga-visual/
     Cronograma del proyecto.md  actividades, duraciones y ruta crítica
     edt.md                      estructura de desglose del trabajo
     architecture.md             módulos, EventBus y flujo de datos
+    Umbrales_del_motor.md       umbrales del motor con fuente y justificación
     Calibracion_EAR_pruebas.md  procedimiento de exactitud calibrado vs fijo
     design/                     referencia visual (PNG y React)
   tools/
@@ -117,6 +118,13 @@ abra la cámara por su cuenta.
 
 El contador de sesión arranca en cero en cada ejecución, sin importar la fuente
 de datos (`session.initial_*`).
+
+## Umbrales del motor
+
+Todos los umbrales de decisión (tasa de parpadeo, PERCLOS, luz, temperatura,
+humedad, confianza y cooldown) se leen de `app/config/settings.yaml`, sección
+`thresholds:`. No hay valores fijos en `decision/` ni en la UI. La tabla con la
+fuente o justificación de cada uno está en [`docs/Umbrales_del_motor.md`](docs/Umbrales_del_motor.md).
 
 ## Detección de parpadeos
 

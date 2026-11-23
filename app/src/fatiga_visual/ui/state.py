@@ -129,7 +129,7 @@ class AppState:
 
     @property
     def break_after_seconds(self):
-        return max(1, int(self.settings.get("thresholds.continuous_minutes", 20) * 60))
+        return max(1, int(self.settings.get("thresholds.continuous_minutes") * 60))
 
     @property
     def break_due(self):

@@ -12,6 +12,8 @@ from datetime import datetime
 
 import customtkinter as ctk
 
+from fatiga_visual.core.config import DEFAULTS
+
 from fatiga_visual.ui.theme import (
     AMBER,
     AMBER_SOFT,
@@ -245,11 +247,14 @@ class BlinkPanel(ctk.CTkFrame):
             value_label.configure(text=eye_text, fg=color)
 
         settings = getattr(state, "settings", None)
+        defaults = DEFAULTS["thresholds"]
         perclos_high = (
-            settings.get("thresholds.perclos_high", 0.15) if settings else 0.15
+            settings.get("thresholds.perclos_high") if settings else defaults["perclos_high"]
         )
         long_limit = (
-            settings.get("thresholds.long_closures_per_minute", 3) if settings else 3
+            settings.get("thresholds.long_closures_per_minute")
+            if settings
+            else defaults["long_closures_per_minute"]
         )
         status = getattr(state, "vision_status", None)
         available = getattr(status, "available", True)

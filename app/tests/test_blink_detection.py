@@ -447,6 +447,8 @@ class PipelineIntegrationTests(unittest.TestCase):
 
 
 class FatigueRuleTests(unittest.TestCase):
+    THRESHOLDS = dict(Settings({}).section("thresholds"))
+
     def test_warmup_suppresses_low_rate_alert(self):
         blink = BlinkMetrics(
             timestamp=datetime.now(),
@@ -454,7 +456,7 @@ class FatigueRuleTests(unittest.TestCase):
             blink_rate=5.0,
             elapsed_seconds=5.0,
         )
-        self.assertIsNone(rules.low_blink_rate(blink, None, None, {}))
+        self.assertIsNone(rules.low_blink_rate(blink, None, None, self.THRESHOLDS))
 
     def test_long_closure_triggers_recommendation(self):
         blink = BlinkMetrics(
@@ -465,7 +467,7 @@ class FatigueRuleTests(unittest.TestCase):
             long_closures=4,
             elapsed_seconds=60.0,
         )
-        result = rules.prolonged_eye_closure(blink, None, None, {})
+        result = rules.prolonged_eye_closure(blink, None, None, self.THRESHOLDS)
         self.assertIsNotNone(result)
         self.assertEqual(result.id, "eye-closure")
         self.assertEqual(result.severity, "high")
@@ -480,8 +482,8 @@ class FatigueRuleTests(unittest.TestCase):
             confidence=0.1,
             elapsed_seconds=60.0,
         )
-        self.assertIsNone(rules.low_blink_rate(blink, None, None, {}))
-        self.assertIsNone(rules.prolonged_eye_closure(blink, None, None, {}))
+        self.assertIsNone(rules.low_blink_rate(blink, None, None, self.THRESHOLDS))
+        self.assertIsNone(rules.prolonged_eye_closure(blink, None, None, self.THRESHOLDS))
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ vision:
   blink_score_threshold: 0.65
   blink_cooldown_seconds: 0.06
   face_grace_seconds: 0.4   # tolerancia a frames sin rostro
-  min_confidence: 0.35
+  # min_confidence se centralizó en thresholds: (lo consumen visión y motor).
   overlay_publish_seconds: 0.05  # puntos del overlay enviados a la UI (0 = cada frame)
   model_path: ""            # vacío = caché del usuario (se descarga una vez)
   allow_model_download: true
@@ -45,26 +45,34 @@ exposure:
   absent_after_seconds: 10  # tolerancia antes de dejar de contar presencia
   break_min_seconds: 10     # ausencia mínima para validar una pausa (HU-08)
 
+# ---------------------------------------------------------------------------
+# Umbrales del motor de decisión (SCRUM-32). Fuente única: este archivo.
+# core/config.py DEFAULTS replica estos valores cuando no hay YAML (pruebas).
+# No escribir números de umbral en decision/*.py ni en la interfaz.
+# Cada valor lleva su fuente o justificación en el comentario.
+# ---------------------------------------------------------------------------
 bus:
   topics:
     exposure_metrics: exposure.metrics
     exposure_break: exposure.break
 
 thresholds:
-  blink_rate_low: 15        # parpadeos por minuto considerados bajos
-  blink_warmup_seconds: 20  # no alertar por baja tasa al arrancar
-  blink_low_window_seconds: 60
-  blink_low_min_samples: 3
-  blink_low_max_gap_seconds: 60
-  perclos_high: 0.15        # 15% del tiempo con ojos cerrados en la ventana
-  long_closures_per_minute: 3
-  continuous_minutes: 20    # minutos continuos antes de sugerir pausa
-  lux_min: 300
-  lux_max: 1000
-  temperature_min: 18
-  temperature_max: 26
-  humidity_min: 30
-  humidity_max: 60
+  min_confidence: 0.35         # Confianza mínima de landmarks: por debajo se ignora la muestra. MediaPipe da >0.5 con rostro visible; 0.35 tolera luz baja y gafas.
+  blink_rate_low: 15           # bpm por debajo de lo normal frente a pantalla (~15-20 bpm). Sustituye el 10 del prototipo, que avisaba tarde.
+  blink_warmup_seconds: 20     # s de gracia al arrancar: la ventana de BlinkMetrics necesita 10 s y los primeros valores son inestables.
+  blink_low_window_seconds: 60 # ventana de confirmación de tasa baja: evita alertar por una sola muestra atípica (SCRUM-29).
+  blink_low_min_samples: 3     # muestras mínimas dentro de la ventana para confirmar la baja tasa (SCRUM-29).
+  blink_low_max_gap_seconds: 60 # si transcurre más tiempo sin muestras, se reinicia la ventana (SCRUM-29).
+  perclos_high: 0.15           # 15% del tiempo con ojos cerrados en 60 s; referencia habitual de fatiga en estudios PERCLOS.
+  long_closures_per_minute: 3  # cierres >1.5 s por minuto (ver vision.long_closure_seconds): 3 o más sugiere microsueño.
+  continuous_minutes: 20       # regla 20-20-20 de la American Academy of Ophthalmology: pausa cada 20 min.
+  cooldown_seconds: 300        # 5 min sin repetir la misma alerta; antes estaba fijo en DecisionEngine y generaba avisos redundantes.
+  lux_min: 300                 # lux mínimos para lectura en interiores (guías de iluminación de oficina / EN 12464-1).
+  lux_max: 1000                # lux máximos antes de considerar deslumbramiento sobre la pantalla.
+  temperature_min: 18          # °C, extremo inferior de confort de ASHRAE 55 / ISO 7730 para oficinas.
+  temperature_max: 26          # °C, extremo superior de confort de ASHRAE 55 / ISO 7730 para oficinas.
+  humidity_min: 30             # %HR: por debajo aumenta la sequedad ocular (ASHRAE recomienda 40-60%; 30 da tolerancia en aulas).
+  humidity_max: 60             # %HR: por encima aparece bochorno y riesgo de moho (ASHRAE 55).
 
 mqtt:
   enabled: false           # true cuando el ESP32 y el broker estén activos

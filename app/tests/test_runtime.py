@@ -224,6 +224,11 @@ class BlinkMetricsBusTests(unittest.TestCase):
                 "thresholds": {
                     "blink_rate_low": 15,
                     "blink_warmup_seconds": 0,
+                    # SCRUM-29: la tasa baja se confirma en una ventana; se acorta
+                    # solo en esta prueba para no esperar 60 s reales.
+                    "blink_low_window_seconds": 0.1,
+                    "blink_low_min_samples": 3,
+                    "blink_low_max_gap_seconds": 1,
                     "continuous_minutes": 20,
                 },
                 "session": {
