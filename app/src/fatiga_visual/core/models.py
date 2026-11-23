@@ -49,6 +49,7 @@ class ExposureMetrics:
     continuous_seconds: int
     breaks_taken: int
     break_due: bool = False
+    user_present: bool = False
 
 
 @dataclass(frozen=True)

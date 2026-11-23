@@ -107,8 +107,14 @@ class AppState:
         self._events = queue.Queue()
         if bus is not None:
             bus.subscribe("blink.metrics", self.update_blink_metrics)
-            bus.subscribe("exposure.metrics", self.update_exposure)
-            bus.subscribe("exposure.break", self.update_break_event)
+            bus.subscribe(
+                settings.get("bus.topics.exposure_metrics", "exposure.metrics"),
+                self.update_exposure,
+            )
+            bus.subscribe(
+                settings.get("bus.topics.exposure_break", "exposure.break"),
+                self.update_break_event,
+            )
             bus.subscribe("ambient.reading", self.update_ambient)
             bus.subscribe("ambient.status", self.update_ambient_status)
             bus.subscribe("blink.event", self.update_blink_event)

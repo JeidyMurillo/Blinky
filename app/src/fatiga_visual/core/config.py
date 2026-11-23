@@ -59,6 +59,12 @@ DEFAULTS = {
         "allow_model_download": True,
     },
     "exposure": {"absent_after_seconds": 10, "break_min_seconds": 10},
+    "bus": {
+        "topics": {
+            "exposure_metrics": "exposure.metrics",
+            "exposure_break": "exposure.break",
+        }
+    },
     "thresholds": {
         "blink_rate_low": 15,
         "blink_warmup_seconds": 20,

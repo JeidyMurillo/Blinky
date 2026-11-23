@@ -7,6 +7,7 @@ coincide aquí, no se implementa.
 - Versión del contrato: **1.0**
 - Broker: Mosquitto 2.x, MQTT 3.1.1
 - JSON ambiental: [`ambient.schema.json`](./ambient.schema.json)
+- Eventos internos de exposición: [`exposure.schema.json`](./exposure.schema.json)
 - Codificación: UTF-8
 - Zona horaria: la app sella la hora de recepción. El ESP32 no necesita reloj.
 
@@ -117,8 +118,8 @@ publicarse ni suscribirse en Mosquitto.
 | `blink.event` | `vision/blink_detector.py` | UI, decisión | Parpadeo individual o cierre prolongado |
 | `vision.status` | `vision/` y `runtime/` | UI | Estado de cámara, rostro y calibración |
 | `vision.landmarks` | `runtime/pipeline.py` | UI | `FaceOverlay` con puntos normalizados para dibujar sobre el video (sin frames) |
-| `exposure.metrics` | `exposure/` | UI, decisión, storage | Tiempo de pantalla y pausas |
-| `exposure.break` | `exposure/breaks.py`, `runtime/` | UI | `BreakEvent` con `started` / `finished` y duración de la pausa válida |
+| `exposure.metrics` | `exposure/`, `runtime/` | UI, decisión, storage | Sesión, tiempo continuo, pausas y presencia (`exposure.schema.json`) |
+| `exposure.break` | `exposure/breaks.py`, `runtime/` | UI, decisión | `BreakEvent` con `started` / `finished` y duración de la pausa válida (`exposure.schema.json`) |
 | `ambient.reading` | `ambient/mqtt_client.py` | UI, decisión, storage | `AmbientReading` ya validado |
 | `ambient.status` | `ambient/mqtt_client.py` | UI | Nodo online/offline o datos vencidos |
 | `decision.recommendation` | `decision/engine.py` | UI, storage | Recomendación y su motivo |
@@ -126,6 +127,11 @@ publicarse ni suscribirse en Mosquitto.
 Regla: si un dato debe cruzar de un proceso o equipo a otro, va por MQTT y se
 documenta en la sección 1. Si solo circula dentro de la app, va por `EventBus`
 y se documenta en esta tabla.
+
+`exposure/bus.py` construye el payload de ambos eventos, lo valida contra
+`exposure.schema.json` y solo entonces lo publica. Los nombres de los temas se
+toman de `bus.topics` en `settings.yaml`; los valores por defecto son los de
+esta tabla.
 
 ## 6. Compatibilidad y cambios
 

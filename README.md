@@ -229,6 +229,12 @@ continuo y suma una pausa; cuando vuelve el rostro publica `kind="finished"`
 con la duración real. Las ausencias más cortas no cuentan y el cronómetro sigue
 corriendo. Apagar la cámara no se considera una pausa.
 
+`exposure/bus.py` publica `exposure.metrics` (con sesión, tiempo continuo,
+pausas y presencia) y `exposure.break`. Antes de emitir, valida el payload contra
+`contracts/exposure.schema.json`; un payload inválido se descarta. Los temas se
+configuran en `bus.topics` de `settings.yaml` y ambos pipelines, la UI y el
+storage usan los mismos valores.
+
 `AppState` guarda las últimas 20 pausas en `break_history` y expone
 `break_active` y `last_break`. Monitoreo muestra «Pausa en curso» y la última
 duración; Estadísticas añade la fila «Última pausa». La fuente simulada publica
