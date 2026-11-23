@@ -6,7 +6,11 @@ Qué va aquí:
 
 Ejemplo:
     settings = load_settings()
-    settings.get("thresholds.blink_rate_low", 10)
+    settings.get("thresholds.blink_rate_low")
+
+Los umbrales del motor viven en config/settings.yaml con su justificación.
+DEFAULTS es el espejo usado cuando no hay YAML (pruebas, entorno aislado):
+debe mantenerse igual que la sección `thresholds:` de ese archivo.
 """
 
 from pathlib import Path
@@ -53,18 +57,20 @@ DEFAULTS = {
         "blink_score_threshold": 0.65,
         "blink_cooldown_seconds": 0.06,
         "face_grace_seconds": 0.4,
-        "min_confidence": 0.35,
         "overlay_publish_seconds": 0.05,
         "model_path": "",
         "allow_model_download": True,
     },
     "exposure": {"absent_after_seconds": 10, "break_min_seconds": 10},
+    # Espejo de config/settings.yaml -> thresholds: (SCRUM-32).
     "thresholds": {
+        "min_confidence": 0.35,
         "blink_rate_low": 15,
         "blink_warmup_seconds": 20,
         "perclos_high": 0.15,
         "long_closures_per_minute": 3,
         "continuous_minutes": 20,
+        "cooldown_seconds": 300,
         "lux_min": 300,
         "lux_max": 1000,
         "temperature_min": 18,
