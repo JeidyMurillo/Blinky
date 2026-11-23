@@ -46,11 +46,25 @@ La fuente de datos se elige en `runtime.source`:
   duración, PERCLOS y cierres largos).
 - `blink.event`: `BlinkEvent` puntual (`blink` o `long_closure`).
 - `vision.status`: `VisionStatus` con backend, rostro, calibración y umbral.
+- `vision.landmarks`: `FaceOverlay` con puntos normalizados para dibujar el
+  contorno facial, los ojos y los iris sobre el video (sin transportar frames).
 - `exposure.metrics`: `ExposureMetrics` con sesión y pausas.
+- `exposure.break`: `BreakEvent` (`started` / `finished`) al validar una pausa
+  por ausencia prolongada; reinicia el contador continuo y alimenta el historial.
 - `ambient.reading`: `AmbientReading` validado por MQTT o simulación.
 - `ambient.status`: `"online"` / `"offline"` del LWT.
 - `decision.recommendation`: `Recommendation` emitida por el motor.
 - `tick`, `monitoring`, `camera`: eventos internos de la UI.
+
+### Reglas ambientales
+
+`decision/rules.py` tiene una regla por variable ambiental (`ambient_light`,
+`ambient_temperature`, `ambient_humidity`) y una combinada
+(`combined_blink_light`) para el caso «poco parpadeo + mala luz». Cada regla
+devuelve una `Recommendation` con id propio (`light-*`, `temperature-*`,
+`humidity-*`, `blink-light`), así el motor aplica el cooldown por aviso y la UI
+puede marcarlos como hechos de forma independiente. Ninguna regla emite nada si
+no hay `AmbientReading`: el panel muestra «Sin datos» en vez de un valor falso.
 
 Los eventos pueden originarse en hilos distintos (paho, runtime). `AppState`
 los encola y `MainWindow` los consume en el hilo de Tk cada 100 ms.

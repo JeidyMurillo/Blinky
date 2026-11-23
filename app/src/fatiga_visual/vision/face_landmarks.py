@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from fatiga_visual.core.models import VisionFrame
+from fatiga_visual.core.models import FaceOverlay, VisionFrame
 
 try:
     import mediapipe as mp
@@ -31,6 +31,50 @@ MODEL_URL = (
     "face_landmarker/float16/1/face_landmarker.task"
 )
 MODEL_FILENAME = "face_landmarker.task"
+
+# Subconjunto de índices que se dibuja en el feed. Face Landmarker devuelve los
+# mismos índices de FaceMesh; con `refine_landmarks` también incluye los iris.
+FACE_OVAL_INDICES = (
+    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+    397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+    172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
+)
+LEFT_EYE_OUTLINE_INDICES = (
+    362, 382, 381, 380, 374, 373, 390, 249,
+    263, 466, 388, 387, 386, 385, 384, 398,
+)
+RIGHT_EYE_OUTLINE_INDICES = (
+    33, 7, 163, 144, 145, 153, 154, 155,
+    133, 173, 157, 158, 159, 160, 161, 246,
+)
+IRIS_CENTER_INDICES = (468, 473)
+
+
+def overlay_from_landmarks(landmarks):
+    """Devuelve un `FaceOverlay` normalizado, o None si no hay landmarks."""
+    if landmarks is None:
+        return None
+
+    def pick(indices):
+        points = []
+        for index in indices:
+            if index >= len(landmarks):
+                continue
+            landmark = landmarks[index]
+            if hasattr(landmark, "x"):
+                x, y = landmark.x, landmark.y
+            else:
+                x, y = landmark[0], landmark[1]
+            points.append((float(x), float(y)))
+        return tuple(points)
+
+    return FaceOverlay(
+        timestamp=datetime.now(),
+        oval=pick(FACE_OVAL_INDICES),
+        left_eye=pick(LEFT_EYE_OUTLINE_INDICES),
+        right_eye=pick(RIGHT_EYE_OUTLINE_INDICES),
+        irises=pick(IRIS_CENTER_INDICES),
+    )
 
 
 def default_model_path():

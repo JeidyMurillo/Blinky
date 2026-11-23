@@ -14,6 +14,11 @@ def _reliable(blink, thresholds):
     return getattr(blink, "confidence", 1.0) >= thresholds.get("min_confidence", 0.35)
 
 
+def _ambient_data(ambient):
+    """Solo lecturas vigentes del nodo IoT; nunca valores viejos ni inventados."""
+    return ambient is not None and getattr(ambient, "connected", True)
+
+
 def low_blink_rate(blink, exposure, ambient, thresholds):
     if blink is None or not _reliable(blink, thresholds):
         return None
@@ -50,7 +55,7 @@ def continuous_exposure(blink, exposure, ambient, thresholds):
 
 
 def ambient_light(blink, exposure, ambient, thresholds):
-    if ambient is None:
+    if not _ambient_data(ambient):
         return None
     lux_min = thresholds.get("lux_min", 300)
     lux_max = thresholds.get("lux_max", 1000)
@@ -61,18 +66,46 @@ def ambient_light(blink, exposure, ambient, thresholds):
     return None
 
 
-def ambient_climate(blink, exposure, ambient, thresholds):
-    if ambient is None:
+def ambient_temperature(blink, exposure, ambient, thresholds):
+    if not _ambient_data(ambient):
         return None
     temperature_min = thresholds.get("temperature_min", 18)
     temperature_max = thresholds.get("temperature_max", 26)
+    if ambient.temperature_c < temperature_min:
+        return recommendations.temperature_out_of_range(ambient.temperature_c, low=True)
+    if ambient.temperature_c > temperature_max:
+        return recommendations.temperature_out_of_range(ambient.temperature_c, low=False)
+    return None
+
+
+def ambient_humidity(blink, exposure, ambient, thresholds):
+    if not _ambient_data(ambient):
+        return None
     humidity_min = thresholds.get("humidity_min", 30)
     humidity_max = thresholds.get("humidity_max", 60)
-    if (
-        ambient.temperature_c < temperature_min
-        or ambient.temperature_c > temperature_max
-        or ambient.humidity < humidity_min
-        or ambient.humidity > humidity_max
-    ):
-        return recommendations.ventilate(ambient.temperature_c, ambient.humidity)
+    if ambient.humidity < humidity_min:
+        return recommendations.humidity_out_of_range(ambient.humidity, low=True)
+    if ambient.humidity > humidity_max:
+        return recommendations.humidity_out_of_range(ambient.humidity, low=False)
+    return None
+
+
+def combined_blink_light(blink, exposure, ambient, thresholds):
+    """Poco parpadeo + luz inadecuada: aviso mas especifico que uno solo (HU-13)."""
+    if blink is None or not _reliable(blink, thresholds):
+        return None
+    warmup = thresholds.get("blink_warmup_seconds", 20)
+    elapsed = getattr(blink, "elapsed_seconds", 0.0)
+    if 0 < elapsed < warmup:
+        return None
+    if not _ambient_data(ambient):
+        return None
+    if blink.blink_rate >= thresholds.get("blink_rate_low", 10):
+        return None
+    lux_min = thresholds.get("lux_min", 300)
+    lux_max = thresholds.get("lux_max", 1000)
+    if ambient.lux < lux_min:
+        return recommendations.combined_low_blink_bad_light(blink.blink_rate, ambient.lux, low=True)
+    if ambient.lux > lux_max:
+        return recommendations.combined_low_blink_bad_light(blink.blink_rate, ambient.lux, low=False)
     return None

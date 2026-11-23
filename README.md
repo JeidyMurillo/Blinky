@@ -135,6 +135,7 @@ Flujo:
 ```text
 webcam -> MediaPipe -> 478 landmarks -> EAR -> EMA -> calibración
        -> BlinkDetector -> BlinkMetrics -> EventBus/UI/SQLite -> DecisionEngine
+                \-> vision.landmarks -> AppState -> overlay en el feed de la UI
 ```
 
 `BlinkDetector` no cuenta cualquier bajada del EAR:
@@ -155,6 +156,19 @@ métricas. El resultado se guarda en `app/blinky_calibration.json` (ignorado por
 Git) y se recalcula al inicio de cada sesión para adaptarse a la iluminación.
 Las lecturas de EAR imposibles (>0.5, típicas de un rostro cortado o girado) se
 descartan para que no inflen el umbral ni generen falsos parpadeos.
+
+### Overlay de landmarks en el video
+
+La vista de Monitoreo dibuja los puntos reales que devuelve MediaPipe sobre el
+fotograma en vivo: contorno facial, contorno de ambos ojos y centro de los iris.
+`runtime/pipeline.py` publica `vision.landmarks` con un `FaceOverlay` de puntos
+normalizados (0..1) y `AppState` lo expone al widget, que lo escala al tamaño
+del feed con el mismo recorte *cover* que aplica a la imagen. El bus no transporta
+fotogramas: solo esta estructura pequeña, y se publica como máximo cada
+`vision.overlay_publish_seconds` (0.05 s por defecto).
+
+Cuando no hay rostro, la cámara está apagada o la fuente de datos es simulada,
+el feed muestra una guía facial genérica en lugar de los puntos.
 
 ### Instalación de MediaPipe
 
@@ -188,6 +202,67 @@ También puedes indicar otro modelo con `vision.model_path` o con la variable
 
 La regla `prolonged_eye_closure` alerta cuando `perclos` o los cierres largos
 superan los umbrales de `settings.yaml`.
+
+## Cronómetro de tiempo continuo
+
+El panel de Monitoreo muestra un cronómetro `HH:MM:SS` con el tiempo que llevas
+frente a la pantalla sin una pausa válida, junto a una barra de progreso hacia
+el objetivo de `thresholds.continuous_minutes` (20 min por defecto). El estado
+pasa de «En curso» a «En espera», «En pausa» o «Pausa debida» según corresponda.
+
+`exposure/ExposureTimer` acumula `session_seconds` y `continuous_seconds` solo
+mientras `PresenceTracker` dice que hay usuario. Las pérdidas breves de rostro
+no reinician el conteo (tolerancia `exposure.absent_after_seconds`).
+
+### Detección de pausas
+
+`exposure/breaks.py` aporta `BreakDetector`: mide la ausencia de rostro y solo la
+valida cuando supera `exposure.break_min_seconds` (10 s por defecto). En ese
+momento publica `exposure.break` con `kind="started"`, reinicia el contador
+continuo y suma una pausa; cuando vuelve el rostro publica `kind="finished"`
+con la duración real. Las ausencias más cortas no cuentan y el cronómetro sigue
+corriendo. Apagar la cámara no se considera una pausa.
+
+`AppState` guarda las últimas 20 pausas en `break_history` y expone
+`break_active` y `last_break`. Monitoreo muestra «Pausa en curso» y la última
+duración; Estadísticas añade la fila «Última pausa». La fuente simulada publica
+la misma pausa automática al alcanzar el objetivo de 20 minutos.
+
+## Recomendaciones ambientales
+
+El motor de decisión (`decision/`) combina las cinco variables del sistema:
+tiempo continuo, parpadeo, luz, temperatura y humedad. Cada regla es pura y
+devuelve una `Recommendation` o `None`; los umbrales viven en `thresholds` de
+`settings.yaml`.
+
+| Regla | Condición | Aviso |
+| --- | --- | --- |
+| `ambient_light` | Lux fuera de `lux_min`/`lux_max` | `light-low` / `light-high`: encender una lámpara o cerrar una cortina |
+| `ambient_temperature` | Temperatura fuera de `temperature_min`/`temperature_max` | `temperature-low` / `temperature-high`: ajustar la calefacción o ventilar |
+| `ambient_humidity` | Humedad fuera de `humidity_min`/`humidity_max` | `humidity-low` / `humidity-high`: tomar agua, alejar el aire acondicionado o ventilar |
+| `combined_blink_light` | Poco parpadeo **y** luz inadecuada | `blink-light`: aviso específico que corrige la luz y pide una pausa visual |
+
+Con `runtime.source: real` y MQTT activo, las lecturas del nodo IoT llegan por
+`fatiga/ambient` y `runtime/pipeline.py` se las pasa al motor con
+`ambient_state.latest()`. Si no hay una lectura válida (o está vencida), las
+reglas no emiten nada y el panel muestra «Sin datos» en lugar de valores viejos.
+Los avisos llegan a la vista Recomendaciones por `decision.recommendation` y se
+pueden marcar como hechos.
+
+Para probarlos sin ESP32, usá la fuente simulada con valores fuera de rango:
+
+```yaml
+runtime:
+  source: simulated
+  simulated:
+    ambient_lux: 120          # por debajo de lux_min (300)
+    ambient_temperature: 29   # por encima de temperature_max (26)
+    ambient_humidity: 20      # por debajo de humidity_min (30)
+```
+
+En unos segundos aparecen los tres avisos ambientales en Recomendaciones. Con
+`runtime.source: real` y MQTT apagado no hay datos ambientales: el sistema no
+inventa valores.
 
 ## MQTT
 
@@ -248,9 +323,11 @@ python -m unittest discover -s tests
 ```
 
 Las pruebas cubren EAR por ojo, histéresis y duración de parpadeos, calibración,
-PERCLOS, cierres largos, pipeline real con detector simulado, backend de
-MediaPipe, reglas, bus de eventos, configuración, contrato ambiental,
-almacenamiento y runtime simulado.
+PERCLOS, cierres largos, cronómetro continuo, detección de pausas y reinicio
+del conteo, pipeline real con detector simulado, extracción y proyección de
+landmarks para el overlay,
+backend de MediaPipe, reglas, bus de eventos, configuración, contrato
+ambiental, almacenamiento y runtime simulado.
 
 ## Documentación
 

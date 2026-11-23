@@ -57,12 +57,14 @@ class AmbientPanel(ctk.CTkFrame):
         return value_label
 
     def refresh(self, ambient):
-        if ambient is None:
+        """Sin lectura valida muestra 'Sin datos', nunca un valor viejo o falso."""
+        if ambient is None or not getattr(ambient, "connected", False):
+            self.temperature.configure(text="--")
+            self.lux.configure(text="--")
+            self.humidity.configure(text="--")
+            self.status.configure(text="Sin datos", fg="#c96e5b")
             return
         self.temperature.configure(text=f"{ambient.temperature_c:.1f}")
         self.lux.configure(text=f"{ambient.lux:.0f}")
         self.humidity.configure(text=f"{ambient.humidity:.0f}")
-        if getattr(ambient, "connected", False):
-            self.status.configure(text="Conectado", fg="#39a977")
-        else:
-            self.status.configure(text="Sin datos", fg="#c96e5b")
+        self.status.configure(text="Conectado", fg="#39a977")

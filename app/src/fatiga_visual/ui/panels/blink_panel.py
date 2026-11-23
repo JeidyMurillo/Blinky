@@ -8,14 +8,20 @@ Qué va aquí:
 Se refresca con refresh(state) sin conocer la cámara ni MQTT.
 """
 
+from datetime import datetime
+
 import customtkinter as ctk
 
 from fatiga_visual.ui.theme import (
+    AMBER,
+    AMBER_SOFT,
+    AMBER_TEXT,
     BG,
     GREEN,
     GREEN_SOFT,
     GREEN_TEXT,
     MUTED_SOFT,
+    SALMON,
     TEXT_STRONG,
     bind_tree,
     card_frame,
@@ -80,6 +86,59 @@ class BlinkPanel(ctk.CTkFrame):
             value = label(row, "Abierto", 9, "#39a977", True)
             value.pack(side="right")
             self.eye_state_labels.append(value)
+
+        chrono = card_frame(self)
+        chrono.pack(fill="x", pady=(14, 0))
+        top = ctk.CTkFrame(chrono, fg_color="transparent")
+        top.pack(fill="x", padx=17, pady=(15, 0))
+        titles = ctk.CTkFrame(top, fg_color="transparent")
+        titles.pack(side="left")
+        label(titles, "Cronometro continuo", 14, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Tiempo sin levantarte", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+
+        self.chrono_pill = ctk.CTkFrame(top, fg_color=GREEN_SOFT, corner_radius=13)
+        self.chrono_pill.pack(side="right", anchor="n")
+        self.chrono_status = label(
+            self.chrono_pill, "En curso", 10, GREEN_TEXT, True, bg=GREEN_SOFT
+        )
+        self.chrono_status.pack(padx=(10, 10), pady=5)
+
+        body = ctk.CTkFrame(chrono, fg_color="transparent")
+        body.pack(fill="x", padx=17, pady=(12, 0))
+        tile = ctk.CTkFrame(body, width=36, height=36, fg_color="#e9f3ff", corner_radius=9)
+        tile.pack(side="left")
+        tile.pack_propagate(False)
+        ctk.CTkLabel(
+            tile,
+            text="",
+            image=icon_image("clock", 18, "#4786d4", 1.8),
+            fg_color="#e9f3ff",
+        ).place(relx=0.5, rely=0.5, anchor="center")
+        self.chrono_value = label(body, "00:00:00", 26, TEXT_STRONG, True)
+        self.chrono_value.pack(side="left", padx=(12, 0))
+        self.chrono_note = label(body, "Proxima pausa en 20:00", 9, MUTED_SOFT)
+        self.chrono_note.pack(side="right", anchor="s", pady=(0, 4))
+
+        self.chrono_progress = ctk.CTkProgressBar(
+            chrono,
+            height=6,
+            corner_radius=3,
+            fg_color="#edf0f5",
+            progress_color=GREEN,
+        )
+        self.chrono_progress.set(0.0)
+        self.chrono_progress.pack(fill="x", padx=17, pady=(12, 6))
+
+        footer = ctk.CTkFrame(chrono, fg_color="transparent")
+        footer.pack(fill="x", padx=17, pady=(0, 14))
+        self.chrono_detail = label(footer, "0 pausas registradas", 9, MUTED_SOFT)
+        self.chrono_detail.pack(side="left")
+        self.chrono_goal = label(footer, "Objetivo: 20 min", 9, MUTED_SOFT)
+        self.chrono_goal.pack(side="right")
+        self.break_detail = label(
+            chrono, "Sin pausas registradas todavia", 9, MUTED_SOFT
+        )
+        self.break_detail.pack(anchor="w", padx=17, pady=(0, 12))
 
         metrics = card_frame(self)
         metrics.pack(fill="x", pady=(14, 0))
@@ -243,3 +302,68 @@ class BlinkPanel(ctk.CTkFrame):
                 f"{state.long_closures} cierres largos"
             )
         )
+
+        continuous = state.continuous_seconds
+        limit = state.break_after_seconds
+        self.chrono_value.configure(text=format_clock(continuous))
+        self.chrono_progress.set(min(1.0, continuous / float(limit)))
+        self.chrono_detail.configure(
+            text=f"{state.exposure.breaks_taken} pausas registradas"
+        )
+        self.chrono_goal.configure(text=f"Objetivo: {limit // 60} min")
+
+        last_break = getattr(state, "last_break", None)
+        if getattr(state, "break_active", False):
+            active = state.active_break
+            self.break_detail.configure(
+                text=(
+                    "Pausa en curso desde "
+                    f"{getattr(active, 'started_at', datetime.now()):%H:%M}"
+                ),
+                fg="#4786d4",
+            )
+        elif last_break is not None:
+            started = getattr(last_break, "started_at", None)
+            moment = f" · {started:%H:%M}" if started is not None else ""
+            self.break_detail.configure(
+                text=(
+                    "Ultima pausa: "
+                    f"{format_clock(int(getattr(last_break, 'duration_seconds', 0)))}{moment}"
+                ),
+                fg=MUTED_SOFT,
+            )
+        else:
+            self.break_detail.configure(
+                text="Sin pausas registradas todavia", fg=MUTED_SOFT
+            )
+
+        if getattr(state, "break_active", False):
+            status, bg, fg, color = (
+                "En pausa", "#eaf3ff", "#4786d4", "#4786d4",
+            )
+            note = "El contador se reinicia al volver"
+        elif state.break_due:
+            status, bg, fg, color = (
+                "Pausa debida", "#fdeceb", SALMON, SALMON,
+            )
+            note = "Momento de descansar la vista"
+        elif not state.running:
+            status, bg, fg, color = (
+                "En pausa", AMBER_SOFT, AMBER_TEXT, AMBER,
+            )
+            note = "Monitoreo detenido"
+        elif not state.user_present:
+            status, bg, fg, color = (
+                "En espera", "#eef0f4", "#667087", "#9ba1b0",
+            )
+            note = "Esperando deteccion de rostro"
+        else:
+            status, bg, fg, color = (
+                "En curso", GREEN_SOFT, GREEN_TEXT, GREEN,
+            )
+            note = f"Proxima pausa en {format_clock(max(0, limit - continuous))}"
+
+        self.chrono_status.configure(text=status, fg=fg, bg=bg)
+        self.chrono_pill.configure(fg_color=bg)
+        self.chrono_note.configure(text=note, fg=color)
+        self.chrono_progress.configure(progress_color=color)

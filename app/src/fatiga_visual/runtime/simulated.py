@@ -5,6 +5,7 @@ ESP32 no están disponibles. Publica exactamente los mismos temas del EventBus:
 
 - blink.metrics
 - exposure.metrics
+- exposure.break (pausa tomada al cumplirse el objetivo)
 - ambient.reading (opcional)
 - decision.recommendation
 
@@ -14,9 +15,14 @@ Nunca actualiza widgets directamente.
 import random
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from fatiga_visual.core.models import AmbientReading, BlinkMetrics, VisionStatus
+from fatiga_visual.core.models import (
+    AmbientReading,
+    BlinkMetrics,
+    BreakEvent,
+    VisionStatus,
+)
 from fatiga_visual.decision.engine import DecisionEngine
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 
@@ -39,6 +45,13 @@ class SimulatedPipeline:
         self.blink_target = float(settings.get("runtime.simulated.blink_rate", 18.0))
         self.ambient_seconds = max(self.interval, float(settings.get("runtime.simulated.ambient_seconds", 5.0)))
         self._jitter = float(settings.get("runtime.simulated.jitter", 2.0))
+        # Centro de las lecturas ambientales simuladas. Se pueden sacar de rango
+        # desde settings.yaml para probar las recomendaciones sin ESP32.
+        self._ambient_center = (
+            float(settings.get("runtime.simulated.ambient_lux", 420.0)),
+            float(settings.get("runtime.simulated.ambient_temperature", 23.4)),
+            float(settings.get("runtime.simulated.ambient_humidity", 48.0)),
+        )
 
         self.timer = ExposureTimer(
             break_after_minutes=int(settings.get("thresholds.continuous_minutes", 20))
@@ -52,9 +65,9 @@ class SimulatedPipeline:
 
         self._ambient = AmbientReading(
             timestamp=datetime.now(),
-            lux=420.0,
-            temperature_c=23.4,
-            humidity=48.0,
+            lux=self._ambient_center[0],
+            temperature_c=self._ambient_center[1],
+            humidity=self._ambient_center[2],
             connected=True,
         )
         self._next_ambient = 0.0
@@ -88,7 +101,9 @@ class SimulatedPipeline:
     def _tick(self, elapsed):
         self.timer.tick(elapsed)
         if self.timer.break_due:
+            continuous_before = self.timer.continuous_seconds
             self.timer.take_break()
+            self._publish_break(continuous_before)
 
         self._maybe_publish_ambient()
 
@@ -136,6 +151,22 @@ class SimulatedPipeline:
             ambient = self._ambient
         self.engine.evaluate(blink, exposure, ambient)
 
+    def _publish_break(self, continuous_before):
+        """La fuente simulada no detecta rostro: publica la pausa automática."""
+        if self.bus is None:
+            return
+        now = datetime.now()
+        self.bus.publish(
+            "exposure.break",
+            BreakEvent(
+                timestamp=now,
+                started_at=now - timedelta(seconds=20),
+                kind="finished",
+                duration_seconds=20.0,
+                continuous_before_seconds=continuous_before,
+            ),
+        )
+
     def _maybe_publish_ambient(self):
         if not self.simulate_ambient:
             return
@@ -143,11 +174,12 @@ class SimulatedPipeline:
         if now < self._next_ambient:
             return
         self._next_ambient = now + self.ambient_seconds
+        lux, temperature, humidity = self._ambient_center
         self._ambient = AmbientReading(
             timestamp=datetime.now(),
-            lux=max(0.0, random.gauss(420.0, 25.0)),
-            temperature_c=random.gauss(23.4, 0.3),
-            humidity=min(100.0, max(0.0, random.gauss(48.0, 2.0))),
+            lux=max(0.0, random.gauss(lux, 25.0)),
+            temperature_c=random.gauss(temperature, 0.3),
+            humidity=min(100.0, max(0.0, random.gauss(humidity, 2.0))),
             connected=True,
         )
         self.bus.publish("ambient.reading", self._ambient)

@@ -73,12 +73,52 @@ class RuleTests(unittest.TestCase):
     def test_good_light_ignored(self):
         self.assertIsNone(rules.ambient_light(blink(18), exposure(5), ambient(lux=500), THRESHOLDS))
 
-    def test_climate_out_of_range(self):
-        result = rules.ambient_climate(blink(18), exposure(5), ambient(temperature=29), THRESHOLDS)
-        self.assertEqual(result.id, "ventilate")
+    def test_temperature_out_of_range(self):
+        high = rules.ambient_temperature(blink(18), exposure(5), ambient(temperature=29), THRESHOLDS)
+        low = rules.ambient_temperature(blink(18), exposure(5), ambient(temperature=14), THRESHOLDS)
+        self.assertEqual(high.id, "temperature-high")
+        self.assertEqual(low.id, "temperature-low")
+        self.assertIn("29.0 C", high.message)
 
-    def test_climate_in_range_ignored(self):
-        self.assertIsNone(rules.ambient_climate(blink(18), exposure(5), ambient(), THRESHOLDS))
+    def test_temperature_in_range_ignored(self):
+        self.assertIsNone(rules.ambient_temperature(blink(18), exposure(5), ambient(), THRESHOLDS))
+
+    def test_humidity_out_of_range(self):
+        dry = rules.ambient_humidity(blink(18), exposure(5), ambient(humidity=20), THRESHOLDS)
+        wet = rules.ambient_humidity(blink(18), exposure(5), ambient(humidity=75), THRESHOLDS)
+        self.assertEqual(dry.id, "humidity-low")
+        self.assertEqual(wet.id, "humidity-high")
+        self.assertIn("Toma agua", dry.message)
+
+    def test_humidity_in_range_ignored(self):
+        self.assertIsNone(rules.ambient_humidity(blink(18), exposure(5), ambient(), THRESHOLDS))
+
+    def test_ambient_rules_ignore_missing_or_stale_data(self):
+        ambient_rules = (
+            rules.ambient_light,
+            rules.ambient_temperature,
+            rules.ambient_humidity,
+            rules.combined_blink_light,
+        )
+        stale = AmbientReading(
+            timestamp=datetime.now(),
+            lux=120,
+            temperature_c=29,
+            humidity=20,
+            connected=False,
+        )
+        for rule in ambient_rules:
+            self.assertIsNone(rule(blink(18), exposure(5), None, THRESHOLDS))
+            self.assertIsNone(rule(blink(8), exposure(5), stale, THRESHOLDS))
+
+    def test_combined_blink_and_bad_light(self):
+        result = rules.combined_blink_light(blink(8), exposure(5), ambient(lux=120), THRESHOLDS)
+        self.assertEqual(result.id, "blink-light")
+        self.assertEqual(result.severity, "high")
+        self.assertIn("lampara", result.message)
+        # Sin una de las dos condiciones, no se emite el aviso combinado.
+        self.assertIsNone(rules.combined_blink_light(blink(18), exposure(5), ambient(lux=120), THRESHOLDS))
+        self.assertIsNone(rules.combined_blink_light(blink(8), exposure(5), ambient(lux=500), THRESHOLDS))
 
 
 class EngineTests(unittest.TestCase):
@@ -110,6 +150,22 @@ class EngineTests(unittest.TestCase):
         engine.evaluate(blink(8), exposure(5), ambient())
         second = engine.evaluate(blink(8), exposure(5), ambient())
         self.assertEqual(len(second), 1)
+
+    def test_ambient_recommendations_are_published(self):
+        bus = EventBus()
+        received = []
+        bus.subscribe("decision.recommendation", received.append)
+        engine = DecisionEngine(self.settings, bus)
+
+        results = engine.evaluate(
+            blink(18), exposure(5), ambient(lux=120, temperature=29, humidity=20)
+        )
+
+        ids = {item.id for item in results}
+        self.assertIn("light-low", ids)
+        self.assertIn("temperature-high", ids)
+        self.assertIn("humidity-low", ids)
+        self.assertEqual(len(received), len(results))
 
 
 if __name__ == "__main__":

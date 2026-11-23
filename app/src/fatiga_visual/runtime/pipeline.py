@@ -8,6 +8,7 @@ Temas publicados:
 - blink.event (parpadeo o cierre largo, para reacciones inmediatas)
 - vision.status (backend, rostro, calibración y umbral)
 - exposure.metrics
+- exposure.break (inicio y fin de una pausa válida)
 - decision.recommendation
 
 La cámara es compartida con la UI (VisionFrame). Si la ventana no la activa,
@@ -26,8 +27,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from fatiga_visual.core.models import BlinkEvent, VisionStatus
+from fatiga_visual.core.models import BlinkEvent, FaceOverlay, VisionStatus
 from fatiga_visual.decision.engine import DecisionEngine
+from fatiga_visual.exposure.breaks import BreakDetector
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 from fatiga_visual.exposure.presence import PresenceTracker
 from fatiga_visual.vision.blink_detector import BlinkDetector
@@ -35,7 +37,7 @@ from fatiga_visual.vision.blink_metrics import BlinkMetricsAggregator
 from fatiga_visual.vision.calibration import EarCalibration
 from fatiga_visual.vision.camera import CameraStream
 from fatiga_visual.vision.ear import average_eye_aspect_ratio, eye_aspect_ratios
-from fatiga_visual.vision.face_landmarks import FaceLandmarkDetector
+from fatiga_visual.vision.face_landmarks import FaceLandmarkDetector, overlay_from_landmarks
 from fatiga_visual.vision.smoothing import ExponentialSmoother
 
 try:
@@ -107,6 +109,9 @@ class RuntimePipeline:
         self.timer = ExposureTimer(
             break_after_minutes=int(settings.get("thresholds.continuous_minutes", 20))
         )
+        self.break_detector = BreakDetector(
+            min_break_seconds=float(settings.get("exposure.break_min_seconds", 20))
+        )
         self.engine = DecisionEngine(settings, bus)
         self.publish_seconds = max(0.2, float(settings.get("runtime.publish_seconds", 1.0)))
         self.frame_interval = max(
@@ -118,6 +123,9 @@ class RuntimePipeline:
             0.0, float(settings.get("vision.face_grace_seconds", 0.4))
         )
         self.min_confidence = float(settings.get("vision.min_confidence", 0.35))
+        self.overlay_interval = max(
+            0.0, float(settings.get("vision.overlay_publish_seconds", 0.05))
+        )
 
         self._thread = None
         self._stop = threading.Event()
@@ -130,6 +138,8 @@ class RuntimePipeline:
         self._last_confidence = 0.0
         self._was_present = False
         self._vision_message = self.detector.error
+        self._last_overlay_at = 0.0
+        self._overlay_visible = False
         self._calibration_started = False
         self._aggregator_started = False
 
@@ -256,6 +266,7 @@ class RuntimePipeline:
         self._face_missing_since = None
         self._last_face_at = now
         self._last_confidence = vision_frame.confidence
+        self._publish_overlay(vision_frame.landmarks, now)
 
         try:
             height, width = prepared.shape[:2]
@@ -327,6 +338,7 @@ class RuntimePipeline:
         self._last_ear = 0.0
         self._last_confidence = 0.0
         self._last_blink_score = None
+        self._clear_overlay()
         self.blink_detector.reset()
         self.smoother.reset()
         self.aggregator.set_eyes_closed(False, datetime.now())
@@ -338,9 +350,33 @@ class RuntimePipeline:
         self._last_ear = 0.0
         self._last_confidence = 0.0
         self._last_blink_score = None
+        self._clear_overlay()
         self.blink_detector.reset()
         self.smoother.reset()
         self.aggregator.set_eyes_closed(False, datetime.now())
+
+    def _publish_overlay(self, landmarks, now):
+        """Publica puntos normalizados para el overlay; va throttleado."""
+        if self.bus is None or now - self._last_overlay_at < self.overlay_interval:
+            return
+        self._last_overlay_at = now
+        overlay = overlay_from_landmarks(landmarks)
+        if overlay is None or not overlay.visible:
+            self._clear_overlay()
+            return
+        self._overlay_visible = True
+        self.bus.publish("vision.landmarks", overlay)
+
+    def _clear_overlay(self):
+        if self.bus is None or not self._overlay_visible:
+            return
+        self._overlay_visible = False
+        self.bus.publish("vision.landmarks", FaceOverlay.empty())
+
+    def _publish_break_event(self, event):
+        if self.bus is None:
+            return
+        self.bus.publish("exposure.break", event)
 
     def _publish_blink_event(self, kind, duration_ms):
         if self.bus is None:
@@ -374,12 +410,27 @@ class RuntimePipeline:
             and self._last_face_at is not None
             and now - self._last_face_at <= 2.0
         )
-        was_present = self._was_present
-        present = self.presence.update(face_found, now_dt)
-        if was_present and not present:
-            # Una ausencia real cierra el tramo continuo y cuenta como pausa.
-            self.timer.take_break()
+        if camera_running:
+            break_event = self.break_detector.update(
+                face_found, now_dt, continuous_seconds=self.timer.continuous_seconds
+            )
+            present = self.presence.update(face_found, now_dt)
+            if self.break_detector.active:
+                # Pausa ya validada: el contador no debe seguir avanzando aunque
+                # PresenceTracker todavía tolere la ausencia.
+                present = False
+        else:
+            # Camara apagada no es una pausa: se descarta la ausencia en curso.
+            self.break_detector.reset()
+            break_event = None
+            present = False
         self._was_present = present
+
+        if break_event is not None:
+            if break_event.kind == "started":
+                # HU-08: la ausencia minima cumplida reinicia el contador.
+                self.timer.take_break()
+            self._publish_break_event(break_event)
 
         self.timer.tick(elapsed, present=present)
         exposure = self.timer.snapshot()

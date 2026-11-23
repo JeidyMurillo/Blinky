@@ -15,11 +15,13 @@ from datetime import datetime, timedelta
 from fatiga_visual.decision import rules
 
 RULES = (
+    rules.combined_blink_light,
     rules.low_blink_rate,
     rules.prolonged_eye_closure,
     rules.continuous_exposure,
     rules.ambient_light,
-    rules.ambient_climate,
+    rules.ambient_temperature,
+    rules.ambient_humidity,
 )
 
 

@@ -116,7 +116,9 @@ publicarse ni suscribirse en Mosquitto.
 | `blink.metrics` | `vision/blink_metrics.py` | UI, decisión, storage | Tasa, PERCLOS, cierres largos y confianza |
 | `blink.event` | `vision/blink_detector.py` | UI, decisión | Parpadeo individual o cierre prolongado |
 | `vision.status` | `vision/` y `runtime/` | UI | Estado de cámara, rostro y calibración |
+| `vision.landmarks` | `runtime/pipeline.py` | UI | `FaceOverlay` con puntos normalizados para dibujar sobre el video (sin frames) |
 | `exposure.metrics` | `exposure/` | UI, decisión, storage | Tiempo de pantalla y pausas |
+| `exposure.break` | `exposure/breaks.py`, `runtime/` | UI | `BreakEvent` con `started` / `finished` y duración de la pausa válida |
 | `ambient.reading` | `ambient/mqtt_client.py` | UI, decisión, storage | `AmbientReading` ya validado |
 | `ambient.status` | `ambient/mqtt_client.py` | UI | Nodo online/offline o datos vencidos |
 | `decision.recommendation` | `decision/engine.py` | UI, storage | Recomendación y su motivo |
