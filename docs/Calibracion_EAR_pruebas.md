@@ -22,12 +22,22 @@ python tools\blink_eval.py tools\data\sesion1.csv
 
 Durante la grabación (40 s por defecto):
 
-1. **Calibración (4 s):** mirar al frente sin parpadear. La ventana muestra
+1. **Calibración (4 s):** mirar al frente sin parpadear. La terminal muestra
    `CALIBRANDO`. Al terminar imprime el umbral aprendido, p. ej.
    `Umbral calibrado: 0.1873 (62 muestras)`.
 2. **Etiquetado:** cada vez que cierres los ojos, pulsa **ESPACIO** en ese mismo
-   momento. La tecla marca 0,3 s como `closed_real=1`. Repite 10 veces.
+   momento (la tecla se detecta en la terminal; no se abre ventana de video).
+   La tecla marca 0,3 s como `closed_real=1`. Repite 10 veces.
 3. **Fin:** pulsa **ENTER** o **Q**. Se guarda el CSV en `tools\data\`.
+
+Si la terminal no recibe las teclas, usa el modo sin teclado:
+
+```powershell
+python tools\record_ear.py --output tools\data\sesion1.csv --auto-cues
+```
+
+En ese modo el programa imprime `>>> PARPADEA AHORA` cada 3 s y etiqueta solo
+esa ventana. Tú solo parpadeas cuando aparezca el aviso.
 
 Repite la sesión 3 veces, por ejemplo:
 

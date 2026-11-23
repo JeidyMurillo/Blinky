@@ -3,17 +3,20 @@ r"""Graba EAR de la cámara del PC con etiquetas de verdad de campo (SCRUM-23).
 Uso (desde la raíz del repo):
     python tools\record_ear.py --output tools\data\sesion1.csv
 
-Durante la grabación:
+No abre ventana de OpenCV (algunas builds no incluyen highgui). El estado se
+muestra en la terminal y la tecla se detecta con `msvcrt` en Windows:
+
   1. Los primeros segundos (4 por defecto) mirar al frente SIN parpadear:
      ahí se calcula el umbral EAR calibrado.
   2. Después, cada vez que cierres los ojos pulsa ESPACIO en ese momento.
      La tecla marca ~0.3 s como "ojos cerrados" (verdad de campo).
   3. ENTER o Q termina antes de tiempo.
 
-El CSV resultante tiene una fila por fotograma procesado y lo evalúa
-`tools/blink_eval.py`, que compara el umbral fijo 0.21 contra el aprendido.
+Alternativa sin teclado: `--auto-cues` imprime "PARPADEA AHORA" cada 3 s y
+etiqueta automáticamente esa ventana. Úsala si la terminal no recibe teclas.
 
-No necesita ESP32 ni sensores ambientales.
+El CSV resultante lo evalúa `tools/blink_eval.py`, que compara el umbral fijo
+0.21 contra el aprendido. No necesita ESP32 ni sensores ambientales.
 """
 
 import argparse
@@ -34,6 +37,11 @@ from fatiga_visual.vision.calibration import EarCalibration  # noqa: E402
 from fatiga_visual.vision.ear import average_eye_aspect_ratio  # noqa: E402
 from fatiga_visual.vision.face_landmarks import FaceLandmarkDetector  # noqa: E402
 from fatiga_visual.vision.smoothing import ExponentialSmoother  # noqa: E402
+
+try:
+    import msvcrt
+except ImportError:  # pragma: no cover - Linux/macOS
+    msvcrt = None
 
 FIXED_THRESHOLD = 0.21
 LABEL_SECONDS = 0.30
@@ -58,18 +66,20 @@ def _prepare(frame, width):
     return frame
 
 
-def _draw(frame, lines):
-    for index, line in enumerate(lines):
-        cv2.putText(
-            frame,
-            line,
-            (12, 24 + index * 24),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (255, 255, 255),
-            2,
-            cv2.LINE_AA,
-        )
+def _read_key():
+    """Devuelve ' ', '\\r', 'q', etc. sin bloquear; None si no hay tecla."""
+    if msvcrt is None:
+        return None
+    try:
+        if not msvcrt.kbhit():
+            return None
+        char = msvcrt.getwch()
+        if char in ("\x00", "\xe0"):  # tecla especial: consumir el segundo byte
+            msvcrt.getwch()
+            return None
+        return char.lower()
+    except OSError:  # sin consola adjunta: se usa --auto-cues
+        return None
 
 
 def record(args):
@@ -144,9 +154,14 @@ def record(args):
     presses = 0
     rows = 0
     calibrated = ""
+    next_cue = None
+    last_status = 0.0
 
     print("Grabando. Mira al frente sin parpadear durante la calibración.")
-    print("Después: cierra los ojos y pulsa ESPACIO en el mismo momento.")
+    if args.auto_cues:
+        print(f"Después: parpadea cada {args.cue_interval:g} s cuando diga PARPADEA AHORA.")
+    else:
+        print("Después: cierra los ojos y pulsa ESPACIO en el mismo momento.")
     print("ENTER o Q para terminar.\n")
 
     try:
@@ -161,10 +176,12 @@ def record(args):
                     continue
                 last_seq = seq
 
-                preview = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                 prepared = _prepare(frame_rgb, processing_width)
                 vision = detector.process(prepared, now)
-                valid = vision.landmarks is not None and vision.confidence >= min_confidence
+                valid = (
+                    vision.landmarks is not None
+                    and vision.confidence >= min_confidence
+                )
                 ear = None
                 if valid:
                     try:
@@ -184,14 +201,28 @@ def record(args):
                         calibration.add(ear, now)
                         if calibration.ready:
                             calibrated = f"{calibration.threshold_value:.4f}"
-                            detector_blink.set_threshold(calibration.threshold_value, reopen_margin)
+                            detector_blink.set_threshold(
+                                calibration.threshold_value, reopen_margin
+                            )
                             detector_blink.reset()
-                            print(f"Umbral calibrado: {calibrated} ({calibration.count} muestras)")
+                            print(
+                                f"\n>>> Umbral calibrado: {calibrated} "
+                                f"({calibration.count} muestras)"
+                            )
+                            if args.auto_cues:
+                                next_cue = now + 1.0
                     else:
                         detector_blink.update(
                             ear, now, blink_score=vision.blink_score
                         )
                         closed_pred = int(detector_blink.is_closed)
+
+                if args.auto_cues and not calibrating and next_cue is not None:
+                    if now >= next_cue and presses < args.blinks:
+                        label_until = now + LABEL_SECONDS
+                        presses += 1
+                        next_cue = now + args.cue_interval
+                        print(f">>> PARPADEA AHORA ({presses}/{args.blinks})", flush=True)
 
                 closed_real = int(now < label_until)
                 threshold = (
@@ -218,30 +249,29 @@ def record(args):
                 )
                 rows += 1
 
-                elapsed = now - started
-                lines = [
-                    f"t={elapsed:5.1f}s  filas={rows}  etiquetas={presses}",
-                    "CALIBRANDO - mira al frente sin parpadear" if calibrating
-                    else f"GRABANDO - umbral {calibrated}",
-                    f"ESPACIO = cerrar ojos   ENTER/Q = terminar",
-                ]
-                if closed_real:
-                    lines.append("ETIQUETA: OJOS CERRADOS")
-                _draw(preview, lines)
-                cv2.imshow("Blinky - grabacion EAR", preview)
-                key = cv2.waitKey(1) & 0xFF
-                if key == 32:  # ESPACIO
+                if now - last_status >= 0.5:
+                    last_status = now
+                    state = "CALIBRANDO" if calibrating else "GRABANDO"
+                    print(
+                        f"\rt={now - started:5.1f}s  {state}  filas={rows}  "
+                        f"etiquetas={presses}  umbral={calibrated or '...'}   ",
+                        end="",
+                        flush=True,
+                    )
+
+                key = _read_key()
+                if key == " ":
                     label_until = time.monotonic() + LABEL_SECONDS
                     presses += 1
-                elif key in (13, 27, ord("q")):
+                elif key in ("\r", "\n", "q", "\x1b"):
                     break
     finally:
         camera.stop()
         detector.close()
-        cv2.destroyAllWindows()
 
+    print()
     if not calibration.ready:
-        print("AVISO: la calibración no terminó; repite la sesión con el rostro visible.")
+        print("AVISO: la calibración no terminó; repite con el rostro visible.")
     print(f"Guardado: {output}")
     print(f"Filas: {rows} | etiquetas: {presses} | umbral calibrado: {calibrated or 'n/d'}")
     return 0
@@ -257,6 +287,13 @@ def main():
         default=None,
         help="Override de camera.index de settings.yaml",
     )
+    parser.add_argument(
+        "--auto-cues",
+        action="store_true",
+        help="Etiquetar automáticamente cada cue_interval segundos (sin teclado)",
+    )
+    parser.add_argument("--cue-interval", type=float, default=3.0)
+    parser.add_argument("--blinks", type=int, default=10)
     return record(parser.parse_args())
 
 
