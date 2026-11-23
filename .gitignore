@@ -450,6 +450,9 @@ venv/
 blinky_calibration.json
 *.tmp
 
+# Grabaciones locales de EAR para evidencia de calibración (SCRUM-23)
+tools/data/
+
 # PlatformIO
 .pio/
 .pioenvs/

@@ -44,11 +44,13 @@ fatiga-visual/
     Cronograma del proyecto.md  actividades, duraciones y ruta crítica
     edt.md                      estructura de desglose del trabajo
     architecture.md             módulos, EventBus y flujo de datos
+    Calibracion_EAR_pruebas.md  procedimiento de exactitud calibrado vs fijo
     design/                     referencia visual (PNG y React)
   tools/
     nodo_simulado.py            ← NUEVO: publica MQTT falso
     mqtt_latency_test.py        latencia corregida (paho 2.x)
-    blink_eval.py               evaluación de EAR
+    blink_eval.py               evaluación de EAR y comparación de umbrales
+    record_ear.py               grabación etiquetada desde la cámara del PC
 ```
 
 ## Ejecutar
