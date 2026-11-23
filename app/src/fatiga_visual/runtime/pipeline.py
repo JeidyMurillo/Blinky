@@ -107,7 +107,7 @@ class RuntimePipeline:
             absent_after_seconds=int(settings.get("exposure.absent_after_seconds", 20))
         )
         self.timer = ExposureTimer(
-            break_after_minutes=int(settings.get("thresholds.continuous_minutes", 20))
+            break_after_minutes=int(settings.get("thresholds.continuous_minutes"))
         )
         self.break_detector = BreakDetector(
             min_break_seconds=float(settings.get("exposure.break_min_seconds", 20))
@@ -122,7 +122,8 @@ class RuntimePipeline:
         self.face_grace_seconds = max(
             0.0, float(settings.get("vision.face_grace_seconds", 0.4))
         )
-        self.min_confidence = float(settings.get("vision.min_confidence", 0.35))
+        # Mismo umbral que usa el motor de decisión (SCRUM-32).
+        self.min_confidence = float(settings.get("thresholds.min_confidence"))
         self.overlay_interval = max(
             0.0, float(settings.get("vision.overlay_publish_seconds", 0.05))
         )

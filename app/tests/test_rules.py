@@ -5,26 +5,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fatiga_visual.core.config import Settings
+from fatiga_visual.core.config import DEFAULTS, Settings, load_settings, settings_path
 from fatiga_visual.core.events import EventBus
 from fatiga_visual.core.models import AmbientReading, BlinkMetrics, ExposureMetrics
 from fatiga_visual.decision import rules
 from fatiga_visual.decision.engine import DecisionEngine
 
-THRESHOLDS = {
-    "blink_rate_low": 15,
-    "continuous_minutes": 20,
-    "lux_min": 300,
-    "lux_max": 1000,
-    "temperature_min": 18,
-    "temperature_max": 26,
-    "humidity_min": 30,
-    "humidity_max": 60,
-}
+# Mapping completo: las reglas ya no tienen fallbacks numéricos propios.
+THRESHOLDS = dict(Settings({}).section("thresholds"))
 
 
-def blink(rate):
-    return BlinkMetrics(timestamp=datetime.now(), blinks=100, blink_rate=rate)
+def blink(rate, confidence=1.0):
+    return BlinkMetrics(
+        timestamp=datetime.now(), blinks=100, blink_rate=rate, confidence=confidence
+    )
 
 
 def exposure(minutes):
@@ -138,15 +132,17 @@ class EngineTests(unittest.TestCase):
         self.assertGreaterEqual(len(results), 2)
         self.assertEqual(len(received), len(results))
 
-    def test_cooldown_prevents_duplicates(self):
-        engine = DecisionEngine(self.settings, cooldown_seconds=300)
+    def test_cooldown_from_config_prevents_duplicates(self):
+        self.settings = Settings({"thresholds": {"cooldown_seconds": 300}})
+        engine = DecisionEngine(self.settings)
         first = engine.evaluate(blink(8), exposure(5), ambient())
         second = engine.evaluate(blink(8), exposure(5), ambient())
         self.assertEqual(len(first), 1)
         self.assertEqual(second, [])
 
-    def test_zero_cooldown_allows_repeat(self):
-        engine = DecisionEngine(self.settings, cooldown_seconds=0)
+    def test_zero_cooldown_from_config_allows_repeat(self):
+        self.settings = Settings({"thresholds": {"cooldown_seconds": 0}})
+        engine = DecisionEngine(self.settings)
         engine.evaluate(blink(8), exposure(5), ambient())
         second = engine.evaluate(blink(8), exposure(5), ambient())
         self.assertEqual(len(second), 1)
@@ -166,6 +162,55 @@ class EngineTests(unittest.TestCase):
         self.assertIn("temperature-high", ids)
         self.assertIn("humidity-low", ids)
         self.assertEqual(len(received), len(results))
+
+
+class ConfiguredThresholdsTests(unittest.TestCase):
+    """SCRUM-32: una sola fuente, documentada, sin números fijos en el código."""
+
+    def test_yaml_mirrors_defaults(self):
+        self.assertEqual(load_settings().section("thresholds"), DEFAULTS["thresholds"])
+
+    def test_every_yaml_threshold_has_justification(self):
+        lines = settings_path().read_text(encoding="utf-8").splitlines()
+        documented = []
+        inside = False
+        for line in lines:
+            if line.startswith("thresholds:"):
+                inside = True
+                continue
+            if inside and line and not line[0].isspace() and not line.startswith("#"):
+                break
+            if (
+                inside
+                and line.startswith("  ")
+                and ":" in line
+                and not line.lstrip().startswith("#")
+            ):
+                documented.append((line.strip().split(":", 1)[0], "#" in line))
+        self.assertEqual({key for key, _ in documented}, set(DEFAULTS["thresholds"]))
+        for key, has_comment in documented:
+            self.assertTrue(has_comment, f"{key} sin justificación en settings.yaml")
+
+    def test_no_hardcoded_fallbacks_in_rules_or_engine(self):
+        source_dir = Path(__file__).resolve().parents[1] / "src" / "fatiga_visual"
+        rules_source = (source_dir / "decision" / "rules.py").read_text(encoding="utf-8")
+        engine_source = (source_dir / "decision" / "engine.py").read_text(encoding="utf-8")
+        self.assertNotRegex(rules_source, r"thresholds\.get\(")
+        self.assertNotRegex(engine_source, r"cooldown_seconds\s*=\s*\d")
+        self.assertGreaterEqual(rules_source.count('thresholds["'), 10)
+
+    def test_changing_blink_rate_low_changes_the_rule(self):
+        thresholds = Settings({"thresholds": {"blink_rate_low": 25}}).section("thresholds")
+        self.assertIsNone(rules.low_blink_rate(blink(20), None, None, THRESHOLDS))
+        result = rules.low_blink_rate(blink(20), None, None, thresholds)
+        self.assertEqual(result.id, "blink-low")
+
+    def test_min_confidence_comes_from_thresholds(self):
+        unreliable = blink(8, confidence=0.2)
+        default = Settings({}).section("thresholds")
+        relaxed = Settings({"thresholds": {"min_confidence": 0.1}}).section("thresholds")
+        self.assertIsNone(rules.low_blink_rate(unreliable, None, None, default))
+        self.assertIsNotNone(rules.low_blink_rate(unreliable, None, None, relaxed))
 
 
 if __name__ == "__main__":

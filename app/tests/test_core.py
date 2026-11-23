@@ -28,6 +28,12 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(section["lux_min"], 250)
         self.assertIn("blink_rate_low", section)
 
+    def test_min_confidence_lives_in_thresholds(self):
+        settings = Settings({})
+        self.assertEqual(settings.get("thresholds.min_confidence"), 0.35)
+        self.assertEqual(settings.get("thresholds.cooldown_seconds"), 300)
+        self.assertIsNone(settings.get("vision.min_confidence"))
+
 
 class EventBusTests(unittest.TestCase):
     def test_publish_reaches_subscribers(self):

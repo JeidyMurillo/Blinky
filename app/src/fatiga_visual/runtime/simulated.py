@@ -54,7 +54,7 @@ class SimulatedPipeline:
         )
 
         self.timer = ExposureTimer(
-            break_after_minutes=int(settings.get("thresholds.continuous_minutes", 20))
+            break_after_minutes=int(settings.get("thresholds.continuous_minutes"))
         )
         self.timer.session_seconds = int(settings.get("session.initial_seconds", 0))
         self.timer.continuous_seconds = int(settings.get("session.initial_continuous_seconds", 0))
