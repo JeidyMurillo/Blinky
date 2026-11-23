@@ -6,7 +6,9 @@ Uso (desde la raíz del repo):
 Si el CSV tiene columnas `ear`, `closed_real` y `time` (las escribe
 `tools/record_ear.py`), calcula exactitud, precisión y recall a nivel de
 fotograma y de parpadeo para ambos umbrales. Las filas de calibración se
-ignoran para que no falseen la comparación.
+ignoran para que no falseen la comparación. El veredicto `MEJORA` usa la
+exactitud de **parpadeos** (la métrica del sistema); la de fotogramas es
+diagnóstica porque hay muchos más fotogramas abiertos que cerrados.
 
 Sin esas columnas mantiene el comportamiento anterior: cuenta parpadeos con
 `--threshold` (por defecto 0.21).
@@ -96,6 +98,12 @@ def real_blink_times(rows):
 
 
 def detected_blink_times(rows, threshold, settings):
+    """Instante en que se confirma cada cierre (evento 'closed').
+
+    La etiqueta closed_real marca el inicio del cierre, así que hay que
+    compararla con 'closed', no con 'opened' (que ocurre al reabrir, ~0.4 s
+    después y hacía parecer que fallaba la detección).
+    """
     detector = BlinkDetector(
         threshold=threshold,
         min_closed_frames=int(settings.get("vision.min_closed_frames", 2)),
@@ -114,7 +122,7 @@ def detected_blink_times(rows, threshold, settings):
     times = []
     for row in rows:
         event = detector.update(float(row["ear"]), float(row.get("time") or 0.0))
-        if event == "opened":
+        if event == "closed":
             times.append(float(row.get("time") or 0.0))
     return times
 
@@ -218,11 +226,16 @@ def main():
     )
     _show("UMBRAL CALIBRADO", calibrated, calibrated_frames, calibrated_events)
 
-    improves = (
-        calibrated_frames["accuracy"] >= fixed_frames["accuracy"]
-        and calibrated_events["accuracy"] >= fixed_events["accuracy"]
+    # La métrica del sistema es la detección de parpadeos. La exactitud por
+    # fotograma queda como diagnóstico: hay muchos más fotogramas con ojos
+    # abiertos que cerrados y un solo FP pesa más que varios FN.
+    improves = calibrated_events["accuracy"] >= fixed_events["accuracy"]
+    print(
+        f"\nMEJORA: {'SÍ' if improves else 'NO'} (parpadeos: "
+        f"{fixed_events['accuracy']:.1%} -> {calibrated_events['accuracy']:.1%}). "
+        f"Fotogramas: {fixed_frames['accuracy']:.1%} -> "
+        f"{calibrated_frames['accuracy']:.1%} (solo diagnóstico)."
     )
-    print(f"\nMEJORA: {'SÍ' if improves else 'NO'} (misma señal, distinto umbral)")
     return 0
 
 

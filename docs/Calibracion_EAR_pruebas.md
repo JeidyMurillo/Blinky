@@ -57,11 +57,14 @@ El evaluador descarta las filas de calibración y calcula, para cada umbral:
 
 - **Fotograma:** exactitud, precisión y recall comparando `ear < umbral` contra
   `closed_real`.
-- **Parpadeo:** empareja cada cierre real con el detectado dentro de 0,6 s y
- reporta TP/FP/FN y exactitud.
+- **Parpadeo:** empareja cada cierre real con el evento `closed` del detector
+  dentro de 0,6 s y reporta TP/FP/FN y exactitud. (Comparar con `opened` sería
+  incorrecto: ocurre al reabrir, ~0,4 s después del etiquetado.)
 
-Al final imprime `MEJORA: SÍ` solo si el umbral calibrado es **≥** el fijo en
-ambas medidas.
+Al final imprime `MEJORA: SÍ` si la exactitud de **parpadeos** del umbral
+calibrado es **≥** la del fijo. Esa es la métrica del sistema, porque hay muchos
+más fotogramas con ojos abiertos que cerrados y la exactitud por fotograma
+puede favorecer al umbral más bajo aunque detecte peor los parpadeos.
 
 ## Criterio para cerrar SCRUM-23
 

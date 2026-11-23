@@ -4,8 +4,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "app" / "src"))
 
 import blink_eval  # noqa: E402
+from fatiga_visual.core.config import Settings  # noqa: E402
 
 
 def row(time, ear, closed, calibrated="0.1500", calibrating="0"):
@@ -44,6 +46,16 @@ class BlinkEvalTests(unittest.TestCase):
         calibrated = blink_eval.frame_metrics(rows, 0.15)
         self.assertLess(fixed["accuracy"], calibrated["accuracy"])
         self.assertEqual(calibrated["accuracy"], 1.0)
+
+    def test_detected_blink_times_use_closure_event(self):
+        settings = Settings({})
+        rows = [row(i * 0.04, 0.30, 0) for i in range(6)]
+        rows += [row(i * 0.04, 0.22, 1) for i in range(6, 11)]
+        rows += [row(i * 0.04, 0.30, 0) for i in range(11, 17)]
+        # Con 0.21 el EAR de 0.22 nunca baja del umbral: no detecta el cierre.
+        self.assertEqual(blink_eval.detected_blink_times(rows, 0.21, settings), [])
+        # Con 0.23 sí detecta exactamente un cierre.
+        self.assertEqual(len(blink_eval.detected_blink_times(rows, 0.23, settings)), 1)
 
     def test_event_metrics_match_real_blinks_by_time(self):
         real = [0.2, 1.2]
