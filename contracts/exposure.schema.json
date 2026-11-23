@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fatiga-visual.local/contracts/exposure.schema.json",
+  "title": "ExposureEvent",
+  "description": "Eventos internos de exposición publicados en el EventBus. Contrato 1.0.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event",
+        "timestamp",
+        "session_seconds",
+        "continuous_seconds",
+        "breaks_taken",
+        "break_due",
+        "user_present"
+      ],
+      "properties": {
+        "event": { "const": "exposure.metrics" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "session_seconds": { "type": "integer", "minimum": 0 },
+        "continuous_seconds": { "type": "integer", "minimum": 0 },
+        "breaks_taken": { "type": "integer", "minimum": 0 },
+        "break_due": { "type": "boolean" },
+        "user_present": { "type": "boolean" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event",
+        "timestamp",
+        "started_at",
+        "kind",
+        "duration_seconds",
+        "continuous_before_seconds"
+      ],
+      "properties": {
+        "event": { "const": "exposure.break" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "kind": { "enum": ["started", "finished"] },
+        "duration_seconds": { "type": "number", "minimum": 0 },
+        "continuous_before_seconds": { "type": "number", "minimum": 0 }
+      }
+    }
+  ]
+}

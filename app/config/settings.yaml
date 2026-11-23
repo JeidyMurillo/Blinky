@@ -45,9 +45,17 @@ exposure:
   absent_after_seconds: 10  # tolerancia antes de dejar de contar presencia
   break_min_seconds: 10     # ausencia mínima para validar una pausa (HU-08)
 
+bus:
+  topics:
+    exposure_metrics: exposure.metrics
+    exposure_break: exposure.break
+
 thresholds:
   blink_rate_low: 15        # parpadeos por minuto considerados bajos
   blink_warmup_seconds: 20  # no alertar por baja tasa al arrancar
+  blink_low_window_seconds: 60
+  blink_low_min_samples: 3
+  blink_low_max_gap_seconds: 60
   perclos_high: 0.15        # 15% del tiempo con ojos cerrados en la ventana
   long_closures_per_minute: 3
   continuous_minutes: 20    # minutos continuos antes de sugerir pausa

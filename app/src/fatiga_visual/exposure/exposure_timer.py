@@ -17,11 +17,13 @@ class ExposureTimer:
         self.session_seconds = 0
         self.continuous_seconds = 0
         self.breaks_taken = 0
+        self.present = False
 
     def tick(self, seconds=1, present=True):
         """Avanza el reloj. El tiempo continuo solo corre con el usuario presente."""
         self.session_seconds += seconds
-        if present:
+        self.present = bool(present)
+        if self.present:
             self.continuous_seconds += seconds
 
     def take_break(self):
@@ -32,6 +34,7 @@ class ExposureTimer:
         self.session_seconds = 0
         self.continuous_seconds = 0
         self.breaks_taken = 0
+        self.present = False
 
     @property
     def break_due(self):
@@ -44,4 +47,5 @@ class ExposureTimer:
             continuous_seconds=int(self.continuous_seconds),
             breaks_taken=int(self.breaks_taken),
             break_due=self.break_due,
+            user_present=self.present,
         )
