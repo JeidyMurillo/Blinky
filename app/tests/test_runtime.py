@@ -1,3 +1,4 @@
+import math
 import sys
 import time
 import types
@@ -11,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from fatiga_visual.ambient.ambient_state import AmbientState
 from fatiga_visual.core.config import Settings
 from fatiga_visual.core.events import EventBus
-from fatiga_visual.core.models import AmbientReading, VisionFrame
+from fatiga_visual.core.models import AmbientReading, BlinkMetrics, VisionFrame
 from fatiga_visual.runtime import pipeline as pipeline_module
 from fatiga_visual.runtime.pipeline import RuntimePipeline
 from fatiga_visual.runtime.simulated import SimulatedPipeline
@@ -208,6 +209,75 @@ class RealPipelineAmbientTests(unittest.TestCase):
     def test_stale_iot_reading_warns_nothing(self):
         ids = self._evaluate(lux=120.0, temperature=29.0, humidity=20.0, stale=True)
         self.assertFalse(self.ambient_ids & ids)
+
+
+class BlinkMetricsBusTests(unittest.TestCase):
+    """SCRUM-22: métricas periódicas, payload válido y consumo por el motor."""
+
+    def test_blink_metrics_are_periodic_valid_and_reach_the_engine(self):
+        settings = Settings(
+            {
+                "runtime": {
+                    "publish_seconds": 0.05,
+                    "simulated": {"blink_rate": 5.0, "jitter": 0.0},
+                },
+                "thresholds": {
+                    "blink_rate_low": 15,
+                    "blink_warmup_seconds": 0,
+                    # SCRUM-29: la tasa baja se confirma en una ventana; se acorta
+                    # solo en esta prueba para no esperar 60 s reales.
+                    "blink_low_window_seconds": 0.1,
+                    "blink_low_min_samples": 3,
+                    "blink_low_max_gap_seconds": 1,
+                    "continuous_minutes": 20,
+                },
+                "session": {
+                    "initial_seconds": 0,
+                    "initial_continuous_seconds": 0,
+                    "initial_breaks": 0,
+                    "initial_blinks": 0,
+                },
+            }
+        )
+        bus = EventBus()
+        metrics = []
+        recommendations = []
+        bus.subscribe("blink.metrics", metrics.append)
+        bus.subscribe("decision.recommendation", recommendations.append)
+
+        # Sin ambiente simulado: demuestra que SCRUM-22 no depende del ESP32.
+        pipeline = SimulatedPipeline(settings, bus, simulate_ambient=False)
+        pipeline.start()
+        try:
+            self.assertTrue(wait_for(lambda: len(metrics) >= 3))
+            self.assertTrue(
+                wait_for(lambda: any(item.id == "blink-low" for item in recommendations))
+            )
+        finally:
+            pipeline.stop()
+
+        self.assertGreaterEqual(len(metrics), 3)
+        for item in metrics:
+            self.assertIsInstance(item, BlinkMetrics)
+            for field in (
+                "blink_rate",
+                "ear",
+                "confidence",
+                "mean_blink_duration_ms",
+                "last_blink_duration_ms",
+                "inter_blink_seconds",
+                "perclos",
+                "elapsed_seconds",
+                "calibration_progress",
+            ):
+                self.assertTrue(math.isfinite(getattr(item, field)), field)
+            self.assertGreaterEqual(item.blink_rate, 0.0)
+            self.assertLessEqual(item.blink_rate, 120.0)
+            self.assertGreaterEqual(item.perclos, 0.0)
+            self.assertLessEqual(item.perclos, 1.0)
+            self.assertGreaterEqual(item.mean_blink_duration_ms, 0.0)
+            self.assertGreaterEqual(item.elapsed_seconds, 0.0)
+        self.assertIn("blink-low", {item.id for item in recommendations})
 
 
 if __name__ == "__main__":

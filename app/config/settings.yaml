@@ -51,10 +51,18 @@ exposure:
 # No escribir números de umbral en decision/*.py ni en la interfaz.
 # Cada valor lleva su fuente o justificación en el comentario.
 # ---------------------------------------------------------------------------
+bus:
+  topics:
+    exposure_metrics: exposure.metrics
+    exposure_break: exposure.break
+
 thresholds:
   min_confidence: 0.35         # Confianza mínima de landmarks: por debajo se ignora la muestra. MediaPipe da >0.5 con rostro visible; 0.35 tolera luz baja y gafas.
   blink_rate_low: 15           # bpm por debajo de lo normal frente a pantalla (~15-20 bpm). Sustituye el 10 del prototipo, que avisaba tarde.
   blink_warmup_seconds: 20     # s de gracia al arrancar: la ventana de BlinkMetrics necesita 10 s y los primeros valores son inestables.
+  blink_low_window_seconds: 60 # ventana de confirmación de tasa baja: evita alertar por una sola muestra atípica (SCRUM-29).
+  blink_low_min_samples: 3     # muestras mínimas dentro de la ventana para confirmar la baja tasa (SCRUM-29).
+  blink_low_max_gap_seconds: 60 # si transcurre más tiempo sin muestras, se reinicia la ventana (SCRUM-29).
   perclos_high: 0.15           # 15% del tiempo con ojos cerrados en 60 s; referencia habitual de fatiga en estudios PERCLOS.
   long_closures_per_minute: 3  # cierres >1.5 s por minuto (ver vision.long_closure_seconds): 3 o más sugiere microsueño.
   continuous_minutes: 20       # regla 20-20-20 de la American Academy of Ophthalmology: pausa cada 20 min.

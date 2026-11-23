@@ -24,6 +24,7 @@ from fatiga_visual.core.models import (
     VisionStatus,
 )
 from fatiga_visual.decision.engine import DecisionEngine
+from fatiga_visual.exposure.bus import ExposureBusPublisher
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 
 
@@ -62,6 +63,7 @@ class SimulatedPipeline:
         self.blinks = int(settings.get("session.initial_blinks", 0))
         self._blink_fraction = 0.0
         self.engine = DecisionEngine(settings, bus)
+        self.exposure_bus = ExposureBusPublisher(bus, settings)
 
         self._ambient = AmbientReading(
             timestamp=datetime.now(),
@@ -144,7 +146,7 @@ class SimulatedPipeline:
 
         self.bus.publish("blink.metrics", blink)
         self.bus.publish("vision.status", status)
-        self.bus.publish("exposure.metrics", exposure)
+        self.exposure_bus.publish_metrics(exposure)
 
         ambient = self.ambient_state.latest() if self.ambient_state is not None else None
         if ambient is None and self.simulate_ambient:
@@ -153,18 +155,15 @@ class SimulatedPipeline:
 
     def _publish_break(self, continuous_before):
         """La fuente simulada no detecta rostro: publica la pausa automática."""
-        if self.bus is None:
-            return
         now = datetime.now()
-        self.bus.publish(
-            "exposure.break",
+        self.exposure_bus.publish_break(
             BreakEvent(
                 timestamp=now,
                 started_at=now - timedelta(seconds=20),
                 kind="finished",
                 duration_seconds=20.0,
                 continuous_before_seconds=continuous_before,
-            ),
+            )
         )
 
     def _maybe_publish_ambient(self):

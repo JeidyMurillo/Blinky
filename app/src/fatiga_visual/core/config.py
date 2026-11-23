@@ -62,11 +62,20 @@ DEFAULTS = {
         "allow_model_download": True,
     },
     "exposure": {"absent_after_seconds": 10, "break_min_seconds": 10},
+    "bus": {
+        "topics": {
+            "exposure_metrics": "exposure.metrics",
+            "exposure_break": "exposure.break",
+        }
+    },
     # Espejo de config/settings.yaml -> thresholds: (SCRUM-32).
     "thresholds": {
         "min_confidence": 0.35,
         "blink_rate_low": 15,
         "blink_warmup_seconds": 20,
+        "blink_low_window_seconds": 60,
+        "blink_low_min_samples": 3,
+        "blink_low_max_gap_seconds": 60,
         "perclos_high": 0.15,
         "long_closures_per_minute": 3,
         "continuous_minutes": 20,

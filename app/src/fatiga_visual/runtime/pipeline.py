@@ -30,6 +30,7 @@ from pathlib import Path
 from fatiga_visual.core.models import BlinkEvent, FaceOverlay, VisionStatus
 from fatiga_visual.decision.engine import DecisionEngine
 from fatiga_visual.exposure.breaks import BreakDetector
+from fatiga_visual.exposure.bus import ExposureBusPublisher
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 from fatiga_visual.exposure.presence import PresenceTracker
 from fatiga_visual.vision.blink_detector import BlinkDetector
@@ -113,6 +114,7 @@ class RuntimePipeline:
             min_break_seconds=float(settings.get("exposure.break_min_seconds", 20))
         )
         self.engine = DecisionEngine(settings, bus)
+        self.exposure_bus = ExposureBusPublisher(bus, settings)
         self.publish_seconds = max(0.2, float(settings.get("runtime.publish_seconds", 1.0)))
         self.frame_interval = max(
             0.0, float(settings.get("runtime.frame_interval_ms", 40)) / 1000.0
@@ -375,9 +377,7 @@ class RuntimePipeline:
         self.bus.publish("vision.landmarks", FaceOverlay.empty())
 
     def _publish_break_event(self, event):
-        if self.bus is None:
-            return
-        self.bus.publish("exposure.break", event)
+        self.exposure_bus.publish_break(event)
 
     def _publish_blink_event(self, kind, duration_ms):
         if self.bus is None:
@@ -472,7 +472,7 @@ class RuntimePipeline:
 
         self.bus.publish("blink.metrics", blink)
         self.bus.publish("vision.status", status)
-        self.bus.publish("exposure.metrics", exposure)
+        self.exposure_bus.publish_metrics(exposure)
 
         ambient = self.ambient_state.latest() if self.ambient_state is not None else None
         self.engine.evaluate(blink, exposure, ambient)

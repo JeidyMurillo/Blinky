@@ -64,7 +64,7 @@ def _start_storage(settings, bus):
         safe(lambda reading: repository.record_blink(reading, session_id)),
     )
     bus.subscribe(
-        "exposure.metrics",
+        settings.get("bus.topics.exposure_metrics", "exposure.metrics"),
         safe(lambda reading: repository.record_exposure(reading, session_id)),
     )
     bus.subscribe(

@@ -1,6 +1,7 @@
 import sys
 import unittest
-from datetime import datetime
+from dataclasses import replace
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -15,9 +16,13 @@ from fatiga_visual.decision.engine import DecisionEngine
 THRESHOLDS = dict(Settings({}).section("thresholds"))
 
 
-def blink(rate, confidence=1.0):
+def blink(rate, confidence=1.0, elapsed=60):
     return BlinkMetrics(
-        timestamp=datetime.now(), blinks=100, blink_rate=rate, confidence=confidence
+        timestamp=datetime.now(),
+        blinks=100,
+        blink_rate=rate,
+        elapsed_seconds=elapsed,
+        confidence=confidence,
     )
 
 
@@ -115,6 +120,61 @@ class RuleTests(unittest.TestCase):
         self.assertIsNone(rules.combined_blink_light(blink(8), exposure(5), ambient(lux=500), THRESHOLDS))
 
 
+class SustainedLowBlinkRateTests(unittest.TestCase):
+    def setUp(self):
+        self.rule = rules.SustainedLowBlinkRate()
+        self.start = datetime(2026, 1, 1, 8, 0, 0)
+        self.low = blink(9)
+
+    def evaluate(self, blink_metrics, seconds):
+        now = self.start + timedelta(seconds=seconds)
+        return self.rule(blink_metrics, None, None, THRESHOLDS, now=now)
+
+    def test_alerts_only_after_window_and_min_samples(self):
+        self.assertIsNone(self.evaluate(self.low, 0))
+        self.assertIsNone(self.evaluate(self.low, 30))
+        result = self.evaluate(self.low, 60)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "blink-low")
+        self.assertIn("umbral de 15", result.message)
+
+    def test_value_at_threshold_is_not_low(self):
+        at_limit = blink(15)
+        for seconds in (0, 30, 60):
+            self.assertIsNone(self.evaluate(at_limit, seconds))
+        self.assertIsNone(self.evaluate(blink(14), 90))
+        self.assertEqual(self.rule.window.samples, 1)
+
+    def test_missing_data_resets_the_window(self):
+        self.assertIsNone(self.evaluate(self.low, 0))
+        self.assertIsNone(self.evaluate(None, 10))
+        self.assertEqual(self.rule.window.samples, 0)
+        self.assertIsNone(self.evaluate(self.low, 20))
+        self.assertIsNone(self.evaluate(self.low, 50))
+        self.assertEqual(self.rule.window.samples, 2)
+
+    def test_missing_rate_is_ignored(self):
+        no_rate = replace(self.low, blink_rate=None)
+        self.assertIsNone(self.evaluate(no_rate, 0))
+        self.assertEqual(self.rule.window.samples, 0)
+
+    def test_low_confidence_and_warmup_are_ignored(self):
+        self.assertIsNone(self.evaluate(replace(self.low, confidence=0.1), 0))
+        self.assertIsNone(self.evaluate(blink(9, elapsed=5), 10))
+        self.assertEqual(self.rule.window.samples, 0)
+
+    def test_large_gap_restarts_window(self):
+        self.assertIsNone(self.evaluate(self.low, 0))
+        self.assertIsNone(self.evaluate(self.low, 30))
+        self.assertIsNone(self.evaluate(self.low, 120))
+        self.assertEqual(self.rule.window.samples, 1)
+
+    def test_recovery_resets_window(self):
+        self.assertIsNone(self.evaluate(self.low, 0))
+        self.assertIsNone(self.evaluate(blink(18), 30))
+        self.assertEqual(self.rule.window.samples, 0)
+
+
 class EngineTests(unittest.TestCase):
     def setUp(self):
         self.settings = Settings(
@@ -133,19 +193,40 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(len(received), len(results))
 
     def test_cooldown_from_config_prevents_duplicates(self):
-        self.settings = Settings({"thresholds": {"cooldown_seconds": 300}})
-        engine = DecisionEngine(self.settings)
-        first = engine.evaluate(blink(8), exposure(5), ambient())
-        second = engine.evaluate(blink(8), exposure(5), ambient())
+        engine = DecisionEngine(Settings({"thresholds": {"cooldown_seconds": 300}}))
+        low = blink(8)
+        start = datetime(2026, 1, 1, 8, 0, 0)
+        first = []
+        for seconds in (0, 30, 60):
+            first = engine.evaluate(
+                low,
+                exposure(5),
+                ambient(),
+                now=start + timedelta(seconds=seconds),
+            )
         self.assertEqual(len(first), 1)
+        self.assertEqual(first[0].id, "blink-low")
+        second = engine.evaluate(
+            low, exposure(5), ambient(), now=start + timedelta(seconds=90)
+        )
         self.assertEqual(second, [])
 
     def test_zero_cooldown_from_config_allows_repeat(self):
-        self.settings = Settings({"thresholds": {"cooldown_seconds": 0}})
-        engine = DecisionEngine(self.settings)
-        engine.evaluate(blink(8), exposure(5), ambient())
-        second = engine.evaluate(blink(8), exposure(5), ambient())
+        engine = DecisionEngine(Settings({"thresholds": {"cooldown_seconds": 0}}))
+        low = blink(8)
+        start = datetime(2026, 1, 1, 8, 0, 0)
+        for seconds in (0, 30, 60):
+            engine.evaluate(
+                low,
+                exposure(5),
+                ambient(),
+                now=start + timedelta(seconds=seconds),
+            )
+        second = engine.evaluate(
+            low, exposure(5), ambient(), now=start + timedelta(seconds=90)
+        )
         self.assertEqual(len(second), 1)
+        self.assertEqual(second[0].id, "blink-low")
 
     def test_ambient_recommendations_are_published(self):
         bus = EventBus()

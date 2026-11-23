@@ -45,11 +45,13 @@ fatiga-visual/
     edt.md                      estructura de desglose del trabajo
     architecture.md             módulos, EventBus y flujo de datos
     Umbrales_del_motor.md       umbrales del motor con fuente y justificación
+    Calibracion_EAR_pruebas.md  procedimiento de exactitud calibrado vs fijo
     design/                     referencia visual (PNG y React)
   tools/
     nodo_simulado.py            ← NUEVO: publica MQTT falso
     mqtt_latency_test.py        latencia corregida (paho 2.x)
-    blink_eval.py               evaluación de EAR
+    blink_eval.py               evaluación de EAR y comparación de umbrales
+    record_ear.py               grabación etiquetada desde la cámara del PC
 ```
 
 ## Ejecutar
@@ -211,6 +213,12 @@ También puedes indicar otro modelo con `vision.model_path` o con la variable
 La regla `prolonged_eye_closure` alerta cuando `perclos` o los cierres largos
 superan los umbrales de `settings.yaml`.
 
+La alerta de baja tasa de parpadeo se confirma con una ventana: la tasa debe
+permanecer por debajo de `thresholds.blink_rate_low` durante
+`blink_low_window_seconds` con al menos `blink_low_min_samples` muestras. Un
+valor exactamente en el umbral no alerta, y los datos faltantes, sin confianza
+o dentro de `blink_warmup_seconds` reinician la ventana.
+
 ## Cronómetro de tiempo continuo
 
 El panel de Monitoreo muestra un cronómetro `HH:MM:SS` con el tiempo que llevas
@@ -230,6 +238,12 @@ momento publica `exposure.break` con `kind="started"`, reinicia el contador
 continuo y suma una pausa; cuando vuelve el rostro publica `kind="finished"`
 con la duración real. Las ausencias más cortas no cuentan y el cronómetro sigue
 corriendo. Apagar la cámara no se considera una pausa.
+
+`exposure/bus.py` publica `exposure.metrics` (con sesión, tiempo continuo,
+pausas y presencia) y `exposure.break`. Antes de emitir, valida el payload contra
+`contracts/exposure.schema.json`; un payload inválido se descarta. Los temas se
+configuran en `bus.topics` de `settings.yaml` y ambos pipelines, la UI y el
+storage usan los mismos valores.
 
 `AppState` guarda las últimas 20 pausas en `break_history` y expone
 `break_active` y `last_break`. Monitoreo muestra «Pausa en curso» y la última

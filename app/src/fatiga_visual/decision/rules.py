@@ -1,7 +1,8 @@
 """Reglas independientes del motor.
 
 Qué va aquí:
-- Cada regla es una función pura: entradas -> Recommendation | None.
+- Cada regla pura devuelve Recommendation | None; la ventana de parpadeo
+  bajo recibe su estado explícitamente a través de SustainedLowBlinkRate.
 - Los umbrales llegan desde settings.yaml (sección `thresholds:`). En este
   módulo no queda ningún valor fijo: core/config.py DEFAULTS es el espejo
   usado cuando no hay archivo YAML (por ejemplo, en las pruebas).
@@ -9,10 +10,11 @@ Qué va aquí:
 El parámetro `thresholds` es el mapping devuelto por
 Settings.section("thresholds"), que ya incluye todos los valores por defecto.
 
-Para añadir una regla: función nueva + incluirla en engine.RULES.
+Para añadir una regla: función nueva + incluirla en DecisionEngine._rules().
 """
 
 from fatiga_visual.decision import recommendations
+from fatiga_visual.decision.low_blink_window import LowBlinkRateWindow
 
 
 def _reliable(blink, thresholds):
@@ -36,6 +38,45 @@ def low_blink_rate(blink, exposure, ambient, thresholds):
     if blink.blink_rate < limit:
         return recommendations.low_blink_rate(blink.blink_rate)
     return None
+
+
+class SustainedLowBlinkRate:
+    """Confirma la tasa baja solo después de mantenerse durante una ventana."""
+
+    def __init__(self):
+        self.window = LowBlinkRateWindow()
+
+    def __call__(self, blink, exposure, ambient, thresholds, now=None):
+        if not self._has_data(blink, thresholds):
+            self.window.reset()
+            return None
+        rate = getattr(blink, "blink_rate", None)
+        if rate is None:
+            self.window.reset()
+            return None
+        limit = float(thresholds["blink_rate_low"])
+        sustained = self.window.update(
+            rate < limit,
+            now=now,
+            window_seconds=float(thresholds["blink_low_window_seconds"]),
+            min_samples=int(thresholds["blink_low_min_samples"]),
+            max_gap_seconds=float(thresholds["blink_low_max_gap_seconds"]),
+        )
+        if not sustained:
+            return None
+        return recommendations.low_blink_rate(
+            rate,
+            threshold=limit,
+            sustained_seconds=self.window.elapsed(now),
+        )
+
+    @staticmethod
+    def _has_data(blink, thresholds):
+        if blink is None or not _reliable(blink, thresholds):
+            return False
+        elapsed = getattr(blink, "elapsed_seconds", 0.0) or 0.0
+        warmup = float(thresholds["blink_warmup_seconds"])
+        return elapsed > 0 and elapsed >= warmup
 
 
 def prolonged_eye_closure(blink, exposure, ambient, thresholds):
