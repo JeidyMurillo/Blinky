@@ -1,3 +1,4 @@
+import math
 import sys
 import tempfile
 import types
@@ -8,6 +9,8 @@ from unittest import mock
 
 import numpy as np
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fatiga_visual.core.config import Settings
@@ -20,6 +23,7 @@ from fatiga_visual.vision.blink_detector import BlinkDetector
 from fatiga_visual.vision.blink_metrics import BlinkMetricsAggregator
 from fatiga_visual.vision.calibration import EarCalibration
 from fatiga_visual.vision.ear import average_eye_aspect_ratio, eye_aspect_ratios
+from tools import blink_eval  # noqa: E402
 
 LEFT_EYE = (362, 385, 387, 263, 373, 380)
 RIGHT_EYE = (33, 160, 158, 133, 153, 144)
@@ -444,6 +448,102 @@ class PipelineIntegrationTests(unittest.TestCase):
                 pipeline.calibration.threshold(),
                 places=4,
             )
+
+
+class ReferenceSequenceTests(unittest.TestCase):
+    """Señal de referencia determinista: 5 parpadeos reales y ruido de 1 cuadro."""
+
+    FPS = 30.0
+    THRESHOLD = 0.21
+    REAL_BLINKS = (1.0, 2.5, 4.0, 6.2, 8.1)
+    NOISE_DIPS = (1.8, 3.3, 5.0, 7.0, 9.0)
+    BLINK_FRAMES = 4
+    OPEN_EAR = 0.30
+    CLOSED_EAR = 0.10
+
+    def _settings(self, use_blendshapes=False):
+        return Settings(
+            {
+                "vision": {
+                    "min_closed_frames": 2,
+                    "max_closed_frames": 15,
+                    "reopen_margin": 0.02,
+                    "min_blink_duration_ms": 0.0,
+                    "max_blink_duration_ms": 800.0,
+                    "long_closure_seconds": 1.5,
+                    "blink_cooldown_seconds": 0.06,
+                    "blink_score_threshold": 0.65,
+                    "use_blendshapes": use_blendshapes,
+                }
+            }
+        )
+
+    def _rows(self):
+        step = 1.0 / self.FPS
+        rows = []
+        for index in range(int(10.0 * self.FPS)):
+            moment = round(index * step, 3)
+            ear = self.OPEN_EAR + 0.004 * math.sin(index * 0.7)
+            closed_real = 0
+            for start in self.REAL_BLINKS:
+                if start <= moment < start + self.BLINK_FRAMES * step:
+                    ear = self.CLOSED_EAR
+                    closed_real = 1
+            for dip in self.NOISE_DIPS:
+                if abs(moment - dip) < step / 2.0:
+                    ear = 0.15
+            rows.append(
+                {
+                    "time": f"{moment:.3f}",
+                    "ear": f"{ear:.6f}",
+                    "closed_real": str(closed_real),
+                    "blink_score": "",
+                }
+            )
+        return rows
+
+    def test_reference_sequence_has_five_blinks_and_no_false_positives(self):
+        rows = self._rows()
+        real = blink_eval.real_blink_times(rows)
+        detected = blink_eval.detected_blink_times(
+            rows, self.THRESHOLD, self._settings()
+        )
+        metrics = blink_eval.event_metrics(real, detected, tolerance=0.25)
+
+        self.assertEqual(real, list(self.REAL_BLINKS))
+        self.assertEqual(len(detected), len(self.REAL_BLINKS))
+        for start, found in zip(self.REAL_BLINKS, detected):
+            self.assertAlmostEqual(found, start + 1.0 / self.FPS, delta=0.002)
+        self.assertEqual(metrics["tp"], 5)
+        self.assertEqual(metrics["fp"], 0)
+        self.assertEqual(metrics["fn"], 0)
+        self.assertEqual(metrics["precision"], 1.0)
+        self.assertEqual(metrics["accuracy"], 1.0)
+
+    def test_single_frame_dip_is_not_confirmed(self):
+        detector = BlinkDetector(
+            threshold=self.THRESHOLD,
+            min_closed_frames=2,
+            reopen_margin=0.02,
+            cooldown_seconds=0.06,
+        )
+        self.assertIsNone(detector.update(0.30, 0.000))
+        self.assertIsNone(detector.update(0.15, 0.033))
+        self.assertIsNone(detector.update(0.30, 0.066))
+        self.assertEqual(detector.blinks, 0)
+        self.assertIsNone(detector.last_event)
+
+    def test_evaluator_replays_blendshape_from_reference(self):
+        rows = [
+            {"time": "0.000", "ear": "0.30", "blink_score": "0.05", "closed_real": "0"},
+            {"time": "0.033", "ear": "0.22", "blink_score": "0.90", "closed_real": "1"},
+            {"time": "0.066", "ear": "0.22", "blink_score": "0.90", "closed_real": "1"},
+            {"time": "0.100", "ear": "0.30", "blink_score": "0.90", "closed_real": "0"},
+        ]
+        detected = blink_eval.detected_blink_times(
+            rows, self.THRESHOLD, self._settings(use_blendshapes=True)
+        )
+        self.assertEqual(detected, [0.066])
 
 
 class FatigueRuleTests(unittest.TestCase):
