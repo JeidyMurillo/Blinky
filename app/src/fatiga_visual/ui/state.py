@@ -45,6 +45,7 @@ class AppState:
         self.break_history = []
         self.active_break = None
         self.last_break_at = None
+        self.presence_state = None
         self.running = True
         self.camera_on = False
         self.alert_dismissed = False
@@ -115,6 +116,10 @@ class AppState:
                 settings.get("bus.topics.exposure_break", "exposure.break"),
                 self.update_break_event,
             )
+            bus.subscribe(
+                settings.get("bus.topics.exposure_presence", "exposure.presence"),
+                self.update_presence,
+            )
             bus.subscribe("ambient.reading", self.update_ambient)
             bus.subscribe("ambient.status", self.update_ambient_status)
             bus.subscribe("blink.event", self.update_blink_event)
@@ -145,7 +150,10 @@ class AppState:
 
     @property
     def user_present(self):
-        """Presión de presencia para el cronómetro; simulación cuenta como presente."""
+        """Presencia para UI; usa evento de presencia cuando existe."""
+        presence = getattr(self, "presence_state", None)
+        if presence is not None:
+            return bool(getattr(presence, "present", False))
         status = getattr(self, "vision_status", None)
         if status is None or getattr(status, "backend", "") == "simulated":
             return True
@@ -293,6 +301,12 @@ class AppState:
             self.break_history.insert(0, event)
             del self.break_history[20:]
         self.emit("break")
+
+    def update_presence(self, event):
+        if event is None:
+            return
+        self.presence_state = event
+        self.emit("presence")
 
     def update_ambient(self, reading):
         if reading is None:

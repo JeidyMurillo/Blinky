@@ -8,14 +8,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fatiga_visual.core.config import Settings
 from fatiga_visual.core.events import EventBus
-from fatiga_visual.core.models import BreakEvent, ExposureMetrics
+from fatiga_visual.core.models import BreakEvent, ExposureMetrics, PresenceEvent
 from fatiga_visual.exposure.bus import (
     BREAK_TOPIC,
     METRICS_TOPIC,
+    PRESENCE_TOPIC,
     ExposureBusPublisher,
     break_payload,
     is_valid,
     metrics_payload,
+    presence_payload,
 )
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 from fatiga_visual.runtime.simulated import SimulatedPipeline
@@ -51,6 +53,13 @@ class ExposurePayloadTests(unittest.TestCase):
         self.assertEqual(payload["event"], BREAK_TOPIC)
         self.assertTrue(is_valid(payload))
 
+    def test_presence_payload_matches_schema(self):
+        payload = presence_payload(
+            PresenceEvent(timestamp=self.now, present=False, confidence=0.0)
+        )
+        self.assertEqual(payload["event"], PRESENCE_TOPIC)
+        self.assertTrue(is_valid(payload))
+
     def test_edge_cases_are_rejected(self):
         self.assertFalse(is_valid(metrics_payload(replace(self.metrics, session_seconds=-1))))
         self.assertFalse(is_valid(metrics_payload(replace(self.metrics, user_present=None))))
@@ -63,6 +72,16 @@ class ExposurePayloadTests(unittest.TestCase):
             )
         )
         self.assertFalse(is_valid(invalid_break))
+        self.assertFalse(
+            is_valid(
+                {
+                    "event": PRESENCE_TOPIC,
+                    "timestamp": self.now.isoformat(),
+                    "present": True,
+                    "confidence": 1.5,
+                }
+            )
+        )
         self.assertFalse(is_valid({"event": METRICS_TOPIC}))
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fatiga_visual.core.config import Settings
-from fatiga_visual.core.models import ExposureMetrics, VisionStatus
+from fatiga_visual.core.models import ExposureMetrics, PresenceEvent, VisionStatus
 from fatiga_visual.exposure.exposure_timer import ExposureTimer
 from fatiga_visual.exposure.presence import PresenceTracker
 from fatiga_visual.ui.state import AppState
@@ -27,12 +27,12 @@ class ContinuousTimerTests(unittest.TestCase):
         presence = PresenceTracker(absent_after_seconds=20)
         timer = ExposureTimer()
 
-        presence.update(True, start)
-        timer.tick(10, present=presence.update(True, start))
-        presence.update(False, start + timedelta(seconds=2))
-        timer.tick(2, present=presence.update(False, start + timedelta(seconds=2)))
-        presence.update(True, start + timedelta(seconds=3))
-        timer.tick(1, present=presence.update(True, start + timedelta(seconds=3)))
+        self.assertTrue(presence.update(True, start).present)
+        timer.tick(10, present=presence.present)
+        self.assertIsNone(presence.update(False, start + timedelta(seconds=2)))
+        timer.tick(2, present=presence.present)
+        self.assertIsNone(presence.update(True, start + timedelta(seconds=3)))
+        timer.tick(1, present=presence.present)
 
         self.assertEqual(timer.continuous_seconds, 13)
         self.assertEqual(timer.breaks_taken, 0)
@@ -46,14 +46,25 @@ class ContinuousTimerTests(unittest.TestCase):
         timer.tick(1200, present=True)
         self.assertTrue(timer.break_due)
 
-        present = presence.update(False, start + timedelta(seconds=25))
-        self.assertFalse(present)
+        event = presence.update(False, start + timedelta(seconds=25))
+        self.assertIsNotNone(event)
+        self.assertFalse(event.present)
         timer.take_break()
         self.assertEqual(timer.continuous_seconds, 0)
         self.assertEqual(timer.breaks_taken, 1)
 
-        timer.tick(5, present=presence.update(True, start + timedelta(seconds=26)))
+        presence.update(True, start + timedelta(seconds=26))
+        timer.tick(5, present=presence.present)
         self.assertEqual(timer.continuous_seconds, 5)
+
+    def test_presence_event_published_on_state_change(self):
+        start = datetime(2026, 1, 1, 12, 0, 0)
+        presence = PresenceTracker(absent_after_seconds=2)
+        self.assertTrue(presence.update(True, start).present)
+        self.assertIsNone(presence.update(True, start + timedelta(seconds=1)))
+        absent = presence.update(False, start + timedelta(seconds=4))
+        self.assertFalse(absent.present)
+        self.assertEqual(absent.confidence, 0.0)
 
 
 class AppStateChronometerTests(unittest.TestCase):
@@ -85,6 +96,12 @@ class AppStateChronometerTests(unittest.TestCase):
         )
         self.assertTrue(state.break_due)
 
+        state.update_presence(PresenceEvent(timestamp=datetime.now(), present=False))
+        self.assertFalse(state.user_present)
+        state.update_presence(PresenceEvent(timestamp=datetime.now(), present=True))
+        self.assertTrue(state.user_present)
+
+        state.presence_state = None
         state.vision_status = VisionStatus(
             timestamp=datetime.now(),
             backend="mediapipe-face-landmarker",

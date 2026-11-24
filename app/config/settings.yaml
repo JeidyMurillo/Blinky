@@ -55,6 +55,7 @@ bus:
   topics:
     exposure_metrics: exposure.metrics
     exposure_break: exposure.break
+    exposure_presence: exposure.presence
 
 thresholds:
   min_confidence: 0.35         # Confianza mínima de landmarks: por debajo se ignora la muestra. MediaPipe da >0.5 con rostro visible; 0.35 tolera luz baja y gafas.
