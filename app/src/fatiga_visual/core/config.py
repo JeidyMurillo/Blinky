@@ -66,6 +66,7 @@ DEFAULTS = {
         "topics": {
             "exposure_metrics": "exposure.metrics",
             "exposure_break": "exposure.break",
+            "exposure_presence": "exposure.presence",
         }
     },
     # Espejo de config/settings.yaml -> thresholds: (SCRUM-32).

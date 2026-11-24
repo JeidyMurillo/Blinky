@@ -4,6 +4,7 @@ from datetime import datetime
 
 METRICS_TOPIC = "exposure.metrics"
 BREAK_TOPIC = "exposure.break"
+PRESENCE_TOPIC = "exposure.presence"
 
 
 def _iso(value):
@@ -30,6 +31,15 @@ def break_payload(event):
         "kind": event.kind,
         "duration_seconds": event.duration_seconds,
         "continuous_before_seconds": event.continuous_before_seconds,
+    }
+
+
+def presence_payload(event):
+    return {
+        "event": PRESENCE_TOPIC,
+        "timestamp": _iso(event.timestamp),
+        "present": event.present,
+        "confidence": event.confidence,
     }
 
 
@@ -92,6 +102,14 @@ def is_valid(payload):
             _is_non_negative_number(payload[key])
             for key in ("duration_seconds", "continuous_before_seconds")
         )
+    if event == PRESENCE_TOPIC:
+        expected = {"event", "timestamp", "present", "confidence"}
+        if set(payload) != expected or not _is_datetime(payload["timestamp"]):
+            return False
+        if not isinstance(payload["present"], bool):
+            return False
+        confidence = payload["confidence"]
+        return not isinstance(confidence, bool) and isinstance(confidence, (int, float)) and 0 <= confidence <= 1
     return False
 
 
@@ -110,6 +128,11 @@ class ExposureBusPublisher:
             if settings is not None
             else BREAK_TOPIC
         )
+        self.presence_topic = (
+            settings.get("bus.topics.exposure_presence", PRESENCE_TOPIC)
+            if settings is not None
+            else PRESENCE_TOPIC
+        )
 
     def publish_metrics(self, metrics):
         payload = metrics_payload(metrics)
@@ -125,4 +148,12 @@ class ExposureBusPublisher:
             return False
         if self.bus is not None:
             self.bus.publish(self.break_topic, event)
+        return True
+
+    def publish_presence(self, event):
+        payload = presence_payload(event)
+        if not is_valid(payload):
+            return False
+        if self.bus is not None:
+            self.bus.publish(self.presence_topic, event)
         return True

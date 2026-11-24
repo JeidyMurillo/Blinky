@@ -68,6 +68,15 @@ class BreakEvent:
 
 
 @dataclass(frozen=True)
+class PresenceEvent:
+    """Cambio de estado de presencia frente a la pantalla."""
+
+    timestamp: datetime
+    present: bool
+    confidence: float = 1.0
+
+
+@dataclass(frozen=True)
 class AmbientReading:
     """Lectura validada del ESP32 recibida por MQTT."""
 

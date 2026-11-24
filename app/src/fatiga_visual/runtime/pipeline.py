@@ -27,7 +27,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from fatiga_visual.core.models import BlinkEvent, FaceOverlay, VisionStatus
+from fatiga_visual.core.models import BlinkEvent, FaceOverlay, PresenceEvent, VisionStatus
 from fatiga_visual.decision.engine import DecisionEngine
 from fatiga_visual.exposure.breaks import BreakDetector
 from fatiga_visual.exposure.bus import ExposureBusPublisher
@@ -145,6 +145,7 @@ class RuntimePipeline:
         self._overlay_visible = False
         self._calibration_started = False
         self._aggregator_started = False
+        self._presence_event = None
 
     @staticmethod
     def _resolve_calibration_path(settings):
@@ -411,11 +412,15 @@ class RuntimePipeline:
             and self._last_face_at is not None
             and now - self._last_face_at <= 2.0
         )
+        presence_confidence = self._last_confidence if face_found else 0.0
         if camera_running:
             break_event = self.break_detector.update(
                 face_found, now_dt, continuous_seconds=self.timer.continuous_seconds
             )
-            present = self.presence.update(face_found, now_dt)
+            self._presence_event = self.presence.update(
+                face_found, now_dt, confidence=presence_confidence
+            )
+            present = self.presence.present
             if self.break_detector.active:
                 # Pausa ya validada: el contador no debe seguir avanzando aunque
                 # PresenceTracker todavía tolere la ausencia.
@@ -424,6 +429,7 @@ class RuntimePipeline:
             # Camara apagada no es una pausa: se descarta la ausencia en curso.
             self.break_detector.reset()
             break_event = None
+            self._presence_event = self.presence.update(False, now_dt, confidence=0.0)
             present = False
         self._was_present = present
 
@@ -434,6 +440,9 @@ class RuntimePipeline:
             self._publish_break_event(break_event)
 
         self.timer.tick(elapsed, present=present)
+        if self._presence_event is not None:
+            self.exposure_bus.publish_presence(self._presence_event)
+            self._presence_event = None
         exposure = self.timer.snapshot()
         blink = self.aggregator.snapshot(
             ear=self._last_ear,

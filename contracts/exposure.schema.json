@@ -45,6 +45,17 @@
         "duration_seconds": { "type": "number", "minimum": 0 },
         "continuous_before_seconds": { "type": "number", "minimum": 0 }
       }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "timestamp", "present", "confidence"],
+      "properties": {
+        "event": { "const": "exposure.presence" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "present": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
     }
   ]
 }

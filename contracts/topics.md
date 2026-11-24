@@ -120,6 +120,7 @@ publicarse ni suscribirse en Mosquitto.
 | `vision.landmarks` | `runtime/pipeline.py` | UI | `FaceOverlay` con puntos normalizados para dibujar sobre el video (sin frames) |
 | `exposure.metrics` | `exposure/`, `runtime/` | UI, decisión, storage | Sesión, tiempo continuo, pausas y presencia (`exposure.schema.json`) |
 | `exposure.break` | `exposure/breaks.py`, `runtime/` | UI, decisión | `BreakEvent` con `started` / `finished` y duración de la pausa válida (`exposure.schema.json`) |
+| `exposure.presence` | `exposure/presence.py`, `runtime/` | UI, decisión, storage | Cambio presente/ausente con confianza (`exposure.schema.json`) |
 | `ambient.reading` | `ambient/mqtt_client.py` | UI, decisión, storage | `AmbientReading` ya validado |
 | `ambient.status` | `ambient/mqtt_client.py` | UI | Nodo online/offline o datos vencidos |
 | `decision.recommendation` | `decision/engine.py` | UI, storage | Recomendación y su motivo |

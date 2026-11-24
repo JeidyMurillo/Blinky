@@ -21,6 +21,7 @@ from fatiga_visual.core.models import (
     AmbientReading,
     BlinkMetrics,
     BreakEvent,
+    PresenceEvent,
     VisionStatus,
 )
 from fatiga_visual.decision.engine import DecisionEngine
@@ -73,6 +74,7 @@ class SimulatedPipeline:
             connected=True,
         )
         self._next_ambient = 0.0
+        self._presence_published = False
         self._thread = None
         self._stop = threading.Event()
 
@@ -102,6 +104,11 @@ class SimulatedPipeline:
 
     def _tick(self, elapsed):
         self.timer.tick(elapsed)
+        if not self._presence_published:
+            self.exposure_bus.publish_presence(
+                PresenceEvent(timestamp=datetime.now(), present=True, confidence=1.0)
+            )
+            self._presence_published = True
         if self.timer.break_due:
             continuous_before = self.timer.continuous_seconds
             self.timer.take_break()
