@@ -121,7 +121,15 @@ def detected_blink_times(rows, threshold, settings):
     )
     times = []
     for row in rows:
-        event = detector.update(float(row["ear"]), float(row.get("time") or 0.0))
+        # El grabador escribe blink_score. Reutilizarlo aquí reproduce la
+        # decisión tomada durante la captura en vez de ignorar la blendshape.
+        score = (row.get("blink_score") or "").strip()
+        blink_score = float(score) if score else None
+        event = detector.update(
+            float(row["ear"]),
+            float(row.get("time") or 0.0),
+            blink_score=blink_score,
+        )
         if event == "closed":
             times.append(float(row.get("time") or 0.0))
     return times
@@ -176,7 +184,8 @@ def _show(name, threshold, frames, events):
         "  parpadeos:  "
         f"reales={events['real']}  detectados={events['detected']}  "
         f"TP={events['tp']} FP={events['fp']} FN={events['fn']}  "
-        f"exactitud={events['accuracy']:.1%}"
+        f"exactitud={events['accuracy']:.1%}  "
+        f"precisión={events['precision']:.1%}  recall={events['recall']:.1%}"
     )
 
 

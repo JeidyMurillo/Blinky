@@ -66,6 +66,22 @@ calibrado es **≥** la del fijo. Esa es la métrica del sistema, porque hay muc
 más fotogramas con ojos abiertos que cerrados y la exactitud por fotograma
 puede favorecer al umbral más bajo aunque detecte peor los parpadeos.
 
+## Prueba de regresión sin cámara
+
+Además de las grabaciones reales, hay una señal de referencia determinista que
+no necesita cámara: 5 parpadeos etiquetados y 5 caídas de un solo cuadro que
+deben ignorarse gracias a `min_closed_frames`. Verifica la detección y que el
+evaluador reproduce la blendshape guardada en el CSV.
+
+```powershell
+cd app
+python -B -m unittest discover -s tests -p test_blink_detection.py -v
+```
+
+Criterio esperado en `ReferenceSequenceTests`: **5 TP, 0 FP, 0 FN**, precisión
+100 % a nivel de parpadeo y ningún evento confirmado para las caídas de un solo
+cuadro.
+
 ## Criterio para cerrar SCRUM-23
 
 - El umbral aprendido se aplica automáticamente: el grabador lo usa en cuanto
