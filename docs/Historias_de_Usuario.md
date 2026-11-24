@@ -373,6 +373,8 @@ Cada épica corresponde a una épica del tablero Jira del proyecto: E1 → `SCRU
 - **Dado que** hice caso al aviso y descansé la vista, **cuando** termina mi descanso, **entonces** el contador empieza de nuevo.
 - **Caso de error:** **Dado que** ignoré el aviso o lo pospuse, **cuando** pasa un tiempo, **entonces** el sistema no me lo repite de forma insistente; me lo vuelve a mostrar solo después de un tiempo razonable.
 
+- **Nota de implementación:** `decision/rules.py:TwentyTwentyTwenty` guarda el estado de la alerta. El aviso se emite una sola vez y se rearma cuando `ExposureMetrics.breaks_taken` aumenta, es decir, cuando el pipeline valida una pausa.
+
 - **Tipo de requisito:** Explícito
 - **Prioridad (MoSCoW):** Must
 - **Fase / Hito:** Fase 3

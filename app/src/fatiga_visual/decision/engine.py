@@ -4,6 +4,7 @@ Qué va aquí:
 - Ejecutar todas las reglas en orden de prioridad.
 - Confirmar la tasa de parpadeo baja durante una ventana entre evaluaciones.
 - Evitar repetir la misma alerta antes del cooldown configurado.
+- Emitir la regla 20-20-20 una sola vez hasta que haya una pausa válida.
 - Publicar "decision.recommendation" en el EventBus.
 
 Uso:
@@ -41,13 +42,14 @@ class DecisionEngine:
         self.cooldown = timedelta(seconds=float(seconds))
         self._last_emitted = {}
         self._low_blink_rate = rules.SustainedLowBlinkRate()
+        self._twenty_twenty = rules.TwentyTwentyTwenty()
 
     def _rules(self):
         return (
             rules.combined_blink_light,
             self._low_blink_rate,
             rules.prolonged_eye_closure,
-            rules.continuous_exposure,
+            self._twenty_twenty,
             rules.ambient_light,
             rules.ambient_temperature,
             rules.ambient_humidity,

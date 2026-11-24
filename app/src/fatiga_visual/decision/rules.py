@@ -100,6 +100,50 @@ def continuous_exposure(blink, exposure, ambient, thresholds):
     return None
 
 
+class TwentyTwentyTwenty:
+    """Regla 20-20-20 con estado: avisa una vez por periodo continuo.
+
+    La alerta se rearma solo cuando el contador de pausas aumenta (pausa válida)
+    o cuando se observa un reinicio del tiempo continuo. Así, ignorar el aviso
+    no produce repetición mientras el usuario siga frente a la pantalla.
+    """
+
+    def __init__(self):
+        self._alerted = False
+        self._breaks_taken = None
+        self._continuous_seconds = 0.0
+
+    def __call__(self, blink, exposure, ambient, thresholds):
+        if exposure is None:
+            return None
+
+        continuous = float(getattr(exposure, "continuous_seconds", 0) or 0)
+        breaks = int(getattr(exposure, "breaks_taken", 0) or 0)
+        limit = float(thresholds["continuous_minutes"]) * 60.0
+
+        if self._breaks_taken is None:
+            self._breaks_taken = breaks
+        elif breaks > self._breaks_taken:
+            # El pipeline incrementa breaks_taken al validar una pausa.
+            self._alerted = False
+            self._breaks_taken = breaks
+        elif continuous < self._continuous_seconds:
+            # Reinicio del cronómetro sin cambio en breaks_taken (fuentes
+            # simuladas o métricas reconstruidas).
+            self._alerted = False
+        self._continuous_seconds = continuous
+
+        if self._alerted or continuous < limit:
+            return None
+        self._alerted = True
+        return recommendations.long_exposure(continuous / 60.0)
+
+    def reset(self):
+        self._alerted = False
+        self._breaks_taken = None
+        self._continuous_seconds = 0.0
+
+
 def ambient_light(blink, exposure, ambient, thresholds):
     if not _ambient_data(ambient):
         return None
