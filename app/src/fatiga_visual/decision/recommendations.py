@@ -52,8 +52,8 @@ def long_exposure(minutes):
         id="break-20",
         title="Aplica la regla 20-20-20",
         message=(
-            f"Llevas {minutes:.0f} minutos frente a la pantalla. Mira durante 20 segundos "
-            "un objeto a 6 metros de distancia."
+            f"Llevas {minutes:.0f} minutos frente a la pantalla. Mira a 20 pies "
+            "(6 m) durante 20 segundos para relajar la vista."
         ),
         severity="medium",
         action="Ver recomendaciones",

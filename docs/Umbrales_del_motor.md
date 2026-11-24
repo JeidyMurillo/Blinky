@@ -21,7 +21,7 @@ umbral numérico fijo**: todos reciben el mapping devuelto por
 | `blink_warmup_seconds` | `20` s | Gracia al arrancar: `BlinkMetrics` necesita 10 s de ventana mínima y los primeros valores son inestables. |
 | `perclos_high` | `0.15` | 15 % del tiempo con ojos cerrados en la ventana de 60 s; referencia habitual de fatiga en estudios PERCLOS. |
 | `long_closures_per_minute` | `3` | Cierres de >1,5 s por minuto (ver `vision.long_closure_seconds`); 3 o más sugiere microsueño. |
-| `continuous_minutes` | `20` min | Regla 20-20-20 de la American Academy of Ophthalmology. |
+| `continuous_minutes` | `20` min | Regla 20-20-20 de la American Academy of Ophthalmology. La alerta se emite una vez por periodo continuo y se rearma solo cuando `breaks_taken` aumenta (pausa válida). |
 | `cooldown_seconds` | `300` s | 5 min sin repetir la misma recomendación. Antes era un literal en `DecisionEngine` y generaba avisos redundantes. |
 | `lux_min` | `300` lux | Mínimo para lectura en interiores (guías de iluminación de oficina / EN 12464-1). |
 | `lux_max` | `1000` lux | Máximo antes de considerar deslumbramiento sobre la pantalla. |

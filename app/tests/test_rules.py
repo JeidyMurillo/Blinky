@@ -175,6 +175,59 @@ class SustainedLowBlinkRateTests(unittest.TestCase):
         self.assertEqual(self.rule.window.samples, 0)
 
 
+class TwentyTwentyTwentyTests(unittest.TestCase):
+    def setUp(self):
+        self.rule = rules.TwentyTwentyTwenty()
+        self.start = datetime(2026, 1, 1, 8, 0, 0)
+
+    def _exposure(self, minutes, breaks=0):
+        return ExposureMetrics(
+            timestamp=self.start,
+            session_seconds=int(minutes * 60),
+            continuous_seconds=int(minutes * 60),
+            breaks_taken=breaks,
+        )
+
+    def test_alerts_at_twenty_minutes_with_clear_instructions(self):
+        self.assertIsNone(self.rule(None, self._exposure(19), None, THRESHOLDS))
+        result = self.rule(None, self._exposure(20), None, THRESHOLDS)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "break-20")
+        self.assertIn("20 pies", result.message)
+        self.assertIn("6 m", result.message)
+        self.assertIn("20 segundos", result.message)
+
+    def test_does_not_repeat_without_a_valid_break(self):
+        self.assertIsNotNone(self.rule(None, self._exposure(20), None, THRESHOLDS))
+        for minutes in (21, 25, 40):
+            self.assertIsNone(
+                self.rule(None, self._exposure(minutes), None, THRESHOLDS)
+            )
+
+    def test_rearms_after_a_valid_break(self):
+        self.assertIsNotNone(self.rule(None, self._exposure(20), None, THRESHOLDS))
+        self.assertIsNone(self.rule(None, self._exposure(25), None, THRESHOLDS))
+
+        after_break = ExposureMetrics(
+            timestamp=self.start,
+            session_seconds=1500,
+            continuous_seconds=0,
+            breaks_taken=1,
+        )
+        self.assertIsNone(self.rule(None, after_break, None, THRESHOLDS))
+        self.assertIsNone(self.rule(None, self._exposure(5, breaks=1), None, THRESHOLDS))
+
+        again = self.rule(None, self._exposure(20, breaks=1), None, THRESHOLDS)
+        self.assertIsNotNone(again)
+        self.assertEqual(again.id, "break-20")
+
+    def test_reset_clears_latch(self):
+        self.assertIsNotNone(self.rule(None, self._exposure(20), None, THRESHOLDS))
+        self.rule.reset()
+        self.assertIsNotNone(self.rule(None, self._exposure(20), None, THRESHOLDS))
+
+
 class EngineTests(unittest.TestCase):
     def setUp(self):
         self.settings = Settings(
@@ -227,6 +280,36 @@ class EngineTests(unittest.TestCase):
         )
         self.assertEqual(len(second), 1)
         self.assertEqual(second[0].id, "blink-low")
+
+    def test_20_20_20_is_latched_until_a_valid_break(self):
+        settings = Settings(
+            {"thresholds": {"cooldown_seconds": 0, "continuous_minutes": 20}}
+        )
+        engine = DecisionEngine(settings)
+        start = datetime(2026, 1, 1, 8, 0, 0)
+
+        def exp(minutes, breaks=0):
+            return ExposureMetrics(
+                timestamp=start,
+                session_seconds=int(minutes * 60),
+                continuous_seconds=int(minutes * 60),
+                breaks_taken=breaks,
+            )
+
+        first = engine.evaluate(None, exp(21), None, now=start)
+        self.assertEqual([item.id for item in first], ["break-20"])
+        repeated = engine.evaluate(
+            None, exp(25), None, now=start + timedelta(seconds=300)
+        )
+        self.assertEqual(repeated, [])
+
+        engine.evaluate(
+            None, exp(0, breaks=1), None, now=start + timedelta(seconds=301)
+        )
+        again = engine.evaluate(
+            None, exp(21, breaks=1), None, now=start + timedelta(seconds=302)
+        )
+        self.assertEqual([item.id for item in again], ["break-20"])
 
     def test_ambient_recommendations_are_published(self):
         bus = EventBus()
