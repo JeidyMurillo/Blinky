@@ -31,9 +31,9 @@ class AmbientPanel(ctk.CTkFrame):
         top.pack(fill="x", padx=17, pady=(17, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Entorno de trabajo", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Lecturas del sensor ambiental", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
-        self.status = label(top, "Conectado", 9, "#39a977", True)
+        label(titles, "Entorno de trabajo", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Lecturas del sensor ambiental", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        self.status = label(top, "Conectado", 10, "#39a977", True)
         self.status.pack(side="right", anchor="n", pady=(2, 0))
 
         values = ctk.CTkFrame(card, fg_color="transparent")
@@ -51,12 +51,12 @@ class AmbientPanel(ctk.CTkFrame):
         inner = ctk.CTkFrame(box, fg_color="transparent")
         inner.pack(fill="x", padx=12, pady=12)
         ctk.CTkLabel(inner, text="", image=icon_image(icon, 15, icon_color, 1.7), fg_color="#fafbfc").pack(anchor="w")
-        label(inner, title, 8, "#9ba2b3").pack(anchor="w", pady=(6, 0))
+        label(inner, title, 10, "#9ba2b3").pack(anchor="w", pady=(6, 0))
         row = ctk.CTkFrame(inner, fg_color="transparent")
         row.pack(anchor="w")
-        value_label = label(row, value, 18, TEXT_STRONG, True)
+        value_label = label(row, value, 19, TEXT_STRONG, True)
         value_label.pack(side="left")
-        label(row, unit, 9, TEXT_STRONG).pack(side="left", padx=(3, 0), pady=(4, 0))
+        label(row, unit, 10, TEXT_STRONG).pack(side="left", padx=(3, 0), pady=(4, 0))
         return value_label
 
     def refresh(self, ambient):
@@ -77,7 +77,7 @@ class AmbientStrip(ctk.CTkFrame):
     """Franja sensor-strip bajo la cámara: temperatura, humedad e iluminación."""
 
     def __init__(self, master, settings=None):
-        super().__init__(master, fg_color="#ffffff", corner_radius=0, height=88)
+        super().__init__(master, fg_color="#ffffff", corner_radius=0, height=112)
         self.settings = settings
         self.pack_propagate(False)
         self.grid_propagate(False)
@@ -99,7 +99,7 @@ class AmbientStrip(ctk.CTkFrame):
         )
 
     def _item(self, column, icon, icon_color, icon_bg, title, unit):
-        item = ctk.CTkFrame(self, fg_color="#ffffff", height=88)
+        item = ctk.CTkFrame(self, fg_color="#ffffff", height=112)
         item.grid(row=0, column=column, sticky="nsew")
         item.grid_propagate(False)
         if column:
@@ -110,22 +110,22 @@ class AmbientStrip(ctk.CTkFrame):
         inner = ctk.CTkFrame(item, fg_color="transparent")
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
-        tile = ctk.CTkFrame(inner, width=30, height=30, fg_color=icon_bg, corner_radius=8)
+        tile = ctk.CTkFrame(inner, width=32, height=32, fg_color=icon_bg, corner_radius=8)
         tile.pack(side="left", padx=(0, 9))
         tile.pack_propagate(False)
         ctk.CTkLabel(
-            tile, text="", image=icon_image(icon, 16, icon_color, 1.8), fg_color=icon_bg
+            tile, text="", image=icon_image(icon, 17, icon_color, 1.8), fg_color=icon_bg
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         text = ctk.CTkFrame(inner, fg_color="transparent")
         text.pack(side="left")
-        label(text, title, 7, "#9ba2b3").pack(anchor="w")
+        label(text, title, 9, "#9ba2b3").pack(anchor="w")
         value_row = ctk.CTkFrame(text, fg_color="transparent")
         value_row.pack(anchor="w", pady=(2, 0))
-        value = label(value_row, "--", 15, TEXT_STRONG, True)
+        value = label(value_row, "--", 16, TEXT_STRONG, True)
         value.pack(side="left")
-        label(value_row, unit, 9, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
-        note = label(text, "Sin datos", 7, "#c96e5b")
+        label(value_row, unit, 10, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
+        note = label(text, "Sin datos", 9, "#c96e5b")
         note.pack(anchor="w", pady=(2, 0))
         return value, note
 

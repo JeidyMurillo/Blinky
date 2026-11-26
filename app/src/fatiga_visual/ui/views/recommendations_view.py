@@ -46,19 +46,19 @@ class RecommendationsView(ctk.CTkFrame):
         header.pack(fill="x")
         left = ctk.CTkFrame(header, fg_color="transparent")
         left.pack(side="left")
-        label(left, "RECOMENDACIONES", 10, "#6b5ce7", True, bg=BG).pack(anchor="w")
-        label(left, "Cuida tu vista", 34, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
+        label(left, "RECOMENDACIONES", 11, "#6b5ce7", True, bg=BG).pack(anchor="w")
+        label(left, "Cuida tu vista", 36, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
         label(
             left,
             "Ejercicios y habitos generados a partir de tu monitoreo.",
-            13,
+            14,
             MUTED,
             bg=BG,
         ).pack(anchor="w", pady=(7, 0))
 
         self.count_pill = ctk.CTkFrame(header, fg_color=PURPLE_SOFT, corner_radius=15)
         self.count_pill.pack(side="right", anchor="s", pady=(0, 4))
-        self.count_label = label(self.count_pill, "", 11, "#5a4fd1", True, bg=PURPLE_SOFT)
+        self.count_label = label(self.count_pill, "", 12, "#5a4fd1", True, bg=PURPLE_SOFT)
         self.count_label.pack(padx=16, pady=6)
 
         grid = ctk.CTkFrame(main, fg_color="transparent")
@@ -73,9 +73,9 @@ class RecommendationsView(ctk.CTkFrame):
         top.pack(fill="x", padx=20, pady=(18, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Para ti ahora", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Basado en tu sesion de hoy", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
-        self.list_hint = label(top, "", 10, "#8b93a2")
+        label(titles, "Para ti ahora", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Basado en tu sesion de hoy", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        self.list_hint = label(top, "", 11, "#8b93a2")
         self.list_hint.pack(side="right", anchor="n", pady=(2, 0))
 
         self.list_body = ctk.CTkScrollableFrame(
@@ -92,9 +92,9 @@ class RecommendationsView(ctk.CTkFrame):
         top.pack(fill="x", padx=17, pady=(17, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Rutina 20-20-20", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Alivio rapido para tus ojos", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
-        ctk.CTkLabel(top, text="", image=icon_image("clock", 19, "#858d9c", 1.7)).pack(side="right", anchor="n")
+        label(titles, "Rutina 20-20-20", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Alivio rapido para tus ojos", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        ctk.CTkLabel(top, text="", image=icon_image("clock", 20, "#858d9c", 1.7)).pack(side="right", anchor="n")
 
         steps = ctk.CTkFrame(routine, fg_color="transparent")
         steps.pack(fill="x", padx=17, pady=(13, 17))
@@ -113,14 +113,14 @@ class RecommendationsView(ctk.CTkFrame):
             ctk.CTkLabel(
                 badge,
                 text=str(index + 1),
-                font=fnt(11, True),
+                font=fnt(12, True),
                 text_color="#5a4fd1",
                 fg_color=PURPLE_SOFT,
             ).place(relx=0.5, rely=0.5, anchor="center")
             text = ctk.CTkFrame(row, fg_color="transparent")
             text.pack(side="left", padx=(10, 0), fill="x", expand=True)
-            label(text, title, 11, TEXT_STRONG, True).pack(anchor="w")
-            label(text, detail, 9, MUTED).pack(anchor="w", pady=(1, 0))
+            label(text, title, 12, TEXT_STRONG, True).pack(anchor="w")
+            label(text, detail, 10, MUTED).pack(anchor="w", pady=(1, 0))
 
         self.ambient_panel = AmbientPanel(side)
         self.ambient_panel.pack(fill="x", pady=(14, 0))
@@ -138,8 +138,8 @@ class RecommendationsView(ctk.CTkFrame):
         )
         copy = ctk.CTkFrame(inner, fg_color="transparent")
         copy.pack(side="left")
-        label(copy, "Racha de cuidado", 11, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
-        label(copy, "4 dias cumpliendo tus pausas", 9, "#d7d2f7", bg="#6b5de0").pack(anchor="w", pady=(3, 0))
+        label(copy, "Racha de cuidado", 12, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
+        label(copy, "4 dias cumpliendo tus pausas", 10, "#d7d2f7", bg="#6b5de0").pack(anchor="w", pady=(3, 0))
         self._signature = None
         self.refresh()
 
@@ -167,11 +167,11 @@ class RecommendationsView(ctk.CTkFrame):
         if not recommendations:
             empty = ctk.CTkFrame(self.list_body, fg_color="#f8fafc", corner_radius=10, border_width=1, border_color="#eceef4")
             empty.pack(fill="x", padx=6, pady=6)
-            label(empty, "Estas al dia", 13, TEXT_STRONG, True, bg="#f8fafc").pack(pady=(26, 4))
+            label(empty, "Estas al dia", 14, TEXT_STRONG, True, bg="#f8fafc").pack(pady=(26, 4))
             label(
                 empty,
                 "No hay recomendaciones activas. Sigue con tus pausas.",
-                10,
+                11,
                 MUTED,
                 bg="#f8fafc",
             ).pack(pady=(0, 26))
@@ -210,20 +210,20 @@ class RecommendationsView(ctk.CTkFrame):
         content.pack(side="left", fill="x", expand=True)
         meta = ctk.CTkFrame(content, fg_color="transparent")
         meta.pack(fill="x")
-        label(meta, severity_text.upper(), 8, accent, True, bg=bg if first else "#fbfcfd").pack(side="left")
+        label(meta, severity_text.upper(), 10, accent, True, bg=bg if first else "#fbfcfd").pack(side="left")
         if first:
             badge = ctk.CTkFrame(meta, fg_color="#ffffff", corner_radius=8)
             badge.pack(side="left", padx=(8, 0))
-            label(badge, "Ahora", 8, accent, True, bg="#ffffff").pack(padx=7, pady=1)
-        label(meta, self._age(recommendation), 9, "#9aa1b2", bg=bg if first else "#fbfcfd").pack(side="right")
+            label(badge, "Ahora", 10, accent, True, bg="#ffffff").pack(padx=7, pady=1)
+        label(meta, self._age(recommendation), 10, "#9aa1b2", bg=bg if first else "#fbfcfd").pack(side="right")
 
-        label(content, recommendation.title, 13, TEXT_STRONG, True, bg=bg if first else "#fbfcfd").pack(
+        label(content, recommendation.title, 14, TEXT_STRONG, True, bg=bg if first else "#fbfcfd").pack(
             anchor="w", pady=(4, 0)
         )
         label(
             content,
             recommendation.message,
-            10,
+            11,
             "#7d8497",
             bg=bg if first else "#fbfcfd",
             wrap=520,
@@ -233,15 +233,15 @@ class RecommendationsView(ctk.CTkFrame):
             content,
             text="Marcar como hecha",
             command=lambda: self.after(0, lambda: self.state.complete_recommendation(recommendation.id)),
-            height=30,
-            width=140,
+            height=34,
+            width=150,
             corner_radius=7,
             fg_color="#ffffff",
             hover_color="#f4f5f9",
             border_width=1,
             border_color="#e5e8ef",
             text_color="#656d7e",
-            font=fnt(9, True),
+            font=fnt(10, True),
         ).pack(anchor="w")
 
     def _age(self, recommendation):

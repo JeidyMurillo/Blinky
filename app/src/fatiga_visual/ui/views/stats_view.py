@@ -66,7 +66,7 @@ class BlinkChart(tk.Canvas):
                 text=f"{int(level)}",
                 anchor="e",
                 fill="#a3a9b8",
-                font=fnt(8),
+                font=fnt(10),
             )
 
         slot = plot_w / len(self.history)
@@ -83,14 +83,14 @@ class BlinkChart(tk.Canvas):
                 y_top - 12,
                 text=str(value),
                 fill=TEXT_STRONG if is_today else "#9aa1b2",
-                font=fnt(9, is_today),
+                font=fnt(11, is_today),
             )
             self.create_text(
                 x,
                 height - 10,
                 text=day,
                 fill="#7d8497" if is_today else "#a3a9b8",
-                font=fnt(9, is_today),
+                font=fnt(11, is_today),
             )
 
 
@@ -106,15 +106,15 @@ class StatsView(ctk.CTkFrame):
         header.pack(fill="x")
         left = ctk.CTkFrame(header, fg_color="transparent")
         left.pack(side="left")
-        label(left, "ESTADISTICAS", 10, "#6b5ce7", True, bg=BG).pack(anchor="w")
-        label(left, "Tu progreso visual", 34, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
-        label(left, "Tendencias de parpadeo y habitos de la semana.", 13, MUTED, bg=BG).pack(
+        label(left, "ESTADISTICAS", 11, "#6b5ce7", True, bg=BG).pack(anchor="w")
+        label(left, "Tu progreso visual", 36, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
+        label(left, "Tendencias de parpadeo y habitos de la semana.", 14, MUTED, bg=BG).pack(
             anchor="w", pady=(7, 0)
         )
 
         period = ctk.CTkFrame(header, fg_color=PURPLE_SOFT, corner_radius=15)
         period.pack(side="right", anchor="s", pady=(0, 4))
-        label(period, "Ultimos 7 dias", 11, "#5a4fd1", True, bg=PURPLE_SOFT).pack(padx=16, pady=6)
+        label(period, "Ultimos 7 dias", 12, "#5a4fd1", True, bg=PURPLE_SOFT).pack(padx=16, pady=6)
 
         grid = ctk.CTkFrame(main, fg_color="transparent")
         grid.pack(fill="both", expand=True, pady=(24, 0))
@@ -128,9 +128,9 @@ class StatsView(ctk.CTkFrame):
         top.pack(fill="x", padx=20, pady=(18, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Parpadeos por dia", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Cantidad de parpadeos detectados", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
-        self.average_label = label(top, "", 11, "#39a977", True)
+        label(titles, "Parpadeos por dia", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Cantidad de parpadeos detectados", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        self.average_label = label(top, "", 12, "#39a977", True)
         self.average_label.pack(side="right", anchor="n", pady=(2, 0))
 
         self.chart = BlinkChart(chart_card)
@@ -145,8 +145,8 @@ class StatsView(ctk.CTkFrame):
         top.pack(fill="x", padx=17, pady=(17, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Resumen de hoy", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Sesion actual", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        label(titles, "Resumen de hoy", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Sesion actual", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
 
         self.summary = {}
         body = ctk.CTkFrame(summary, fg_color="transparent")
@@ -165,11 +165,11 @@ class StatsView(ctk.CTkFrame):
             tile = ctk.CTkFrame(row, width=30, height=30, fg_color="#f4f5f9", corner_radius=8)
             tile.pack(side="left")
             tile.pack_propagate(False)
-            ctk.CTkLabel(tile, text="", image=icon_image(icon, 15, "#6b7280", 1.7), fg_color="#f4f5f9").place(
+            ctk.CTkLabel(tile, text="", image=icon_image(icon, 16, "#6b7280", 1.7), fg_color="#f4f5f9").place(
                 relx=0.5, rely=0.5, anchor="center"
             )
-            label(row, title, 11, MUTED).pack(side="left", padx=(10, 0))
-            value_label = label(row, value, 12, TEXT_STRONG, True)
+            label(row, title, 12, MUTED).pack(side="left", padx=(10, 0))
+            value_label = label(row, value, 13, TEXT_STRONG, True)
             value_label.pack(side="right")
             self.summary[title] = value_label
 
@@ -186,10 +186,10 @@ class StatsView(ctk.CTkFrame):
         )
         text = ctk.CTkFrame(insight, fg_color="transparent")
         text.pack(side="left", pady=10)
-        label(text, "Vas por buen camino", 12, TEXT_STRONG, True).pack(anchor="w")
-        self.insight_label = label(text, "", 10, "#7b8498")
+        label(text, "Vas por buen camino", 13, TEXT_STRONG, True).pack(anchor="w")
+        self.insight_label = label(text, "", 11, "#7b8498")
         self.insight_label.pack(anchor="w", pady=(2, 0))
-        self.insight_value = label(insight, "", 18, PURPLE, True)
+        self.insight_value = label(insight, "", 19, PURPLE, True)
         self.insight_value.pack(side="right", padx=20)
 
         self.refresh()

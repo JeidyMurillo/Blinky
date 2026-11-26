@@ -45,8 +45,8 @@ class BlinkPanel(ctk.CTkFrame):
         top.pack(fill="x", padx=17, pady=(14, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Estado de los ojos", 14, TEXT_STRONG, True).pack(anchor="w")
-        self.eye_subtitle = label(titles, "Actualizado ahora", 10, MUTED_SOFT)
+        label(titles, "Estado de los ojos", 15, TEXT_STRONG, True).pack(anchor="w")
+        self.eye_subtitle = label(titles, "Actualizado ahora", 11, MUTED_SOFT)
         self.eye_subtitle.pack(anchor="w", pady=(3, 0))
 
         self.status_pill = ctk.CTkFrame(top, fg_color=GREEN_SOFT, corner_radius=15)
@@ -57,7 +57,7 @@ class BlinkPanel(ctk.CTkFrame):
         self.status_dot.pack(side="left", padx=(9, 6), pady=7)
         self.status_dot.pack_propagate(False)
         self.status_label = label(
-            self.status_pill, "Normal", 10, GREEN_TEXT, True, bg=GREEN_SOFT
+            self.status_pill, "Normal", 11, GREEN_TEXT, True, bg=GREEN_SOFT
         )
         self.status_label.pack(side="left", padx=(0, 10), pady=5)
 
@@ -75,7 +75,7 @@ class BlinkPanel(ctk.CTkFrame):
                 corner_radius=10,
                 border_width=1,
                 border_color="#eceef4",
-                height=64,
+                height=68,
             )
             box.grid(
                 row=0,
@@ -103,14 +103,14 @@ class BlinkPanel(ctk.CTkFrame):
                 sticky="ew",
                 padx=(0, 7) if column == 0 else (7, 0),
             )
-            label(row, name, 9, "#9ba1b0").pack(side="left")
-            value = label(row, "Abierto", 9, "#39a977", True)
+            label(row, name, 10, "#9ba1b0").pack(side="left")
+            value = label(row, "Abierto", 10, "#39a977", True)
             value.pack(side="right")
             self.eye_state_labels.append(value)
 
         # Tarjeta compacta de tiempo de sesión (session-time-card en Figma).
         chrono = card_frame(self)
-        chrono.configure(height=82)
+        chrono.configure(height=104)
         chrono.pack(fill="x", pady=(14, 0))
         chrono.pack_propagate(False)
         chrono_inner = ctk.CTkFrame(chrono, fg_color="transparent")
@@ -128,16 +128,16 @@ class BlinkPanel(ctk.CTkFrame):
 
         chrono_copy = ctk.CTkFrame(chrono_inner, fg_color="transparent")
         chrono_copy.pack(side="left", fill="both", expand=True)
-        label(chrono_copy, "TIEMPO DE LA SESIÓN", 8, "#9ba2b3").pack(anchor="w")
-        self.chrono_value = label(chrono_copy, "00:00:00", 20, TEXT_STRONG, True)
+        label(chrono_copy, "TIEMPO DE LA SESIÓN", 10, "#9ba2b3").pack(anchor="w")
+        self.chrono_value = label(chrono_copy, "00:00:00", 21, TEXT_STRONG, True)
         self.chrono_value.pack(anchor="w", pady=(3, 0))
-        self.chrono_note = label(chrono_copy, "Monitoreo activo", 8, "#6b7488")
+        self.chrono_note = label(chrono_copy, "Monitoreo activo", 10, "#6b7488")
         self.chrono_note.pack(anchor="w", pady=(2, 0))
 
         self.chrono_pill = ctk.CTkFrame(chrono_inner, fg_color=GREEN_SOFT, corner_radius=13)
         self.chrono_pill.pack(side="right", anchor="center")
         self.chrono_status = label(
-            self.chrono_pill, "En curso", 10, GREEN_TEXT, True, bg=GREEN_SOFT
+            self.chrono_pill, "En curso", 11, GREEN_TEXT, True, bg=GREEN_SOFT
         )
         self.chrono_status.pack(padx=(10, 10), pady=5)
 
@@ -148,8 +148,8 @@ class BlinkPanel(ctk.CTkFrame):
         top.pack(fill="x", padx=17, pady=(14, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Métricas de parpadeo", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Análisis ocular en tiempo real", 10, MUTED_SOFT).pack(
+        label(titles, "Métricas de parpadeo", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Análisis ocular en tiempo real", 11, MUTED_SOFT).pack(
             anchor="w", pady=(3, 0)
         )
 
@@ -164,7 +164,7 @@ class BlinkPanel(ctk.CTkFrame):
         )
         _, self.duration_value, self.duration_subtitle = self._metric(
             metrics_grid, 0, 1, "clock", "#675cdd", "#eeecff", "DURACIÓN MEDIA", "184",
-            "Parpadeo normal", "ms", 19,
+            "Parpadeo normal", "ms", 20,
         )
         _, self.long_closures_value, self.long_closures_subtitle = self._metric(
             metrics_grid, 1, 0, "eye_closed", "#c5656d", "#fdecef", "CIERRES LARGOS",
@@ -172,10 +172,10 @@ class BlinkPanel(ctk.CTkFrame):
         )
         _, self.perclos_value, self.perclos_subtitle = self._metric(
             metrics_grid, 1, 1, "gauge", "#278f96", "#e5f6f7", "PERCLOS", "0.0",
-            "Rango saludable", "%", 19,
+            "Rango saludable", "%", 20,
         )
 
-        stats = ctk.CTkFrame(self, fg_color="#6b5de0", corner_radius=12, height=60)
+        stats = ctk.CTkFrame(self, fg_color="#6b5de0", corner_radius=12, height=72)
         stats.pack(fill="x", pady=(12, 0))
         stats.pack_propagate(False)
         inner = ctk.CTkFrame(stats, fg_color="transparent")
@@ -188,9 +188,9 @@ class BlinkPanel(ctk.CTkFrame):
         ).place(relx=0.5, rely=0.5, anchor="center")
         copy = ctk.CTkFrame(inner, fg_color="transparent")
         copy.pack(side="left", fill="both", expand=True)
-        label(copy, "Ver estadísticas", 12, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
+        label(copy, "Ver estadísticas", 13, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
         label(
-            copy, "Consulta tu progreso y tendencias", 9, "#d7d2f7", bg="#6b5de0"
+            copy, "Consulta tu progreso y tendencias", 10, "#d7d2f7", bg="#6b5de0"
         ).pack(anchor="w", pady=(3, 0))
         ctk.CTkLabel(
             inner,
@@ -202,7 +202,7 @@ class BlinkPanel(ctk.CTkFrame):
 
     def _metric(
         self, parent, row, column, icon, icon_color, icon_bg, title, value,
-        subtitle, unit=None, value_px=19,
+        subtitle, unit=None, value_px=20,
     ):
         card = ctk.CTkFrame(
             parent,
@@ -210,7 +210,7 @@ class BlinkPanel(ctk.CTkFrame):
             corner_radius=10,
             border_width=1,
             border_color="#eceef4",
-            height=78,
+            height=104,
         )
         card.grid(
             row=row,
@@ -230,14 +230,14 @@ class BlinkPanel(ctk.CTkFrame):
         ).place(relx=0.5, rely=0.5, anchor="center")
         text = ctk.CTkFrame(inner, fg_color="transparent")
         text.pack(side="left", fill="x", expand=True)
-        label(text, title, 8, "#9ba2b3").pack(anchor="w")
+        label(text, title, 10, "#9ba2b3").pack(anchor="w")
         value_row = ctk.CTkFrame(text, fg_color="transparent")
         value_row.pack(anchor="w", pady=(2, 0))
         value_label = label(value_row, value, value_px, TEXT_STRONG, True)
         value_label.pack(side="left")
         if unit:
-            label(value_row, unit, 10, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
-        subtitle_label = label(text, subtitle, 8, "#5eb68d")
+            label(value_row, unit, 11, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
+        subtitle_label = label(text, subtitle, 10, "#5eb68d")
         subtitle_label.pack(anchor="w", pady=(2, 0))
         return card, value_label, subtitle_label
 

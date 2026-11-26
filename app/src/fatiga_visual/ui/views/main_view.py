@@ -44,19 +44,27 @@ class MainView(ctk.CTkFrame):
         self.camera_on = False
         self._camera_busy = False
 
-        main = ctk.CTkFrame(self, fg_color="transparent")
-        main.pack(fill="both", expand=True, padx=PAD, pady=(18, 22))
+        # Con la tipografía ampliada el contenido mide más que la ventana fija.
+        # El scroll conserva el tamaño legible y evita que se corten subtítulos.
+        self.main_scroll = ctk.CTkScrollableFrame(
+            self,
+            fg_color=BG,
+            scrollbar_button_color="#dfe3ea",
+            scrollbar_button_hover_color="#cfd5df",
+        )
+        self.main_scroll.pack(fill="both", expand=True, padx=PAD, pady=(18, 22))
+        main = self.main_scroll
 
         header = ctk.CTkFrame(main, fg_color="transparent")
         header.pack(fill="x")
         left = ctk.CTkFrame(header, fg_color="transparent")
         left.pack(side="left")
-        label(left, "SESION ACTIVA", 10, "#6b5ce7", True, bg=BG).pack(anchor="w")
-        label(left, "Buenos dias, Alex", 34, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
+        label(left, "SESION ACTIVA", 11, "#6b5ce7", True, bg=BG).pack(anchor="w")
+        label(left, "Buenos dias, Alex", 36, TEXT, True, bg=BG).pack(anchor="w", pady=(5, 0))
         label(
             left,
             "Blinky esta cuidando tu salud visual mientras trabajas.",
-            13,
+            14,
             MUTED,
             bg=BG,
         ).pack(anchor="w", pady=(7, 0))
@@ -66,7 +74,7 @@ class MainView(ctk.CTkFrame):
         self.status_dot = ctk.CTkFrame(self.status_pill, width=7, height=7, fg_color=GREEN, corner_radius=4)
         self.status_dot.pack(side="left", padx=(11, 7))
         self.status_dot.pack_propagate(False)
-        self.status_text = label(self.status_pill, "Monitoreo en curso", 11, GREEN_TEXT, True, bg=GREEN_SOFT)
+        self.status_text = label(self.status_pill, "Monitoreo en curso", 12, GREEN_TEXT, True, bg=GREEN_SOFT)
         self.status_text.pack(side="left", padx=(0, 12), pady=6)
 
         grid = ctk.CTkFrame(main, fg_color="transparent")
@@ -93,24 +101,24 @@ class MainView(ctk.CTkFrame):
 
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Camara en vivo", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Deteccion facial local", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        label(titles, "Camara en vivo", 15, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Deteccion facial local", 11, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
 
         self.camera_button = ctk.CTkButton(
             top,
             text="Activar camara",
-            image=icon_image("camera", 15, "#676f83", 1.8),
+            image=icon_image("camera", 16, "#676f83", 1.8),
             compound="left",
             command=self._toggle_camera,
-            height=36,
-            width=156,
+            height=38,
+            width=164,
             corner_radius=8,
             fg_color="#f6f7fa",
             hover_color="#f4f2ff",
             border_width=1,
             border_color="#e5e8ef",
             text_color="#676f83",
-            font=fnt(11, True),
+            font=fnt(12, True),
         )
         self.camera_button.pack(side="right")
 
@@ -129,19 +137,19 @@ class MainView(ctk.CTkFrame):
     def _build_alert(self, parent):
         self.alert = ctk.CTkFrame(parent, fg_color=ALERT_BG, corner_radius=12, border_width=1, border_color=ALERT_BORDER)
 
-        icon_tile = ctk.CTkFrame(self.alert, width=46, height=46, fg_color="#fee9e4", corner_radius=11)
+        icon_tile = ctk.CTkFrame(self.alert, width=50, height=50, fg_color="#fee9e4", corner_radius=11)
         icon_tile.pack(side="left", padx=(17, 15), pady=15)
         icon_tile.pack_propagate(False)
         ctk.CTkLabel(
-            icon_tile, text="", image=icon_image("eye_closed", 27, "#c66755", 1.7), fg_color="#fee9e4"
+            icon_tile, text="", image=icon_image("eye_closed", 29, "#c66755", 1.7), fg_color="#fee9e4"
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         text = ctk.CTkFrame(self.alert, fg_color="transparent")
         text.pack(side="left", fill="both", expand=True, pady=12)
-        label(text, "FATIGA VISUAL DETECTADA", 8, "#c66f5d", True, bg=ALERT_BG).pack(anchor="w")
-        self.alert_title = label(text, "Tus ojos necesitan una pausa", 12, "#4a3434", True, bg=ALERT_BG)
+        label(text, "FATIGA VISUAL DETECTADA", 10, "#c66f5d", True, bg=ALERT_BG).pack(anchor="w")
+        self.alert_title = label(text, "Tus ojos necesitan una pausa", 13, "#4a3434", True, bg=ALERT_BG)
         self.alert_title.pack(anchor="w", pady=(2, 0))
-        self.alert_message = label(text, "", 9, "#8f7774", bg=ALERT_BG, wrap=760)
+        self.alert_message = label(text, "", 11, "#8f7774", bg=ALERT_BG, wrap=800)
         self.alert_message.pack(anchor="w", pady=(3, 0))
 
         actions = ctk.CTkFrame(self.alert, fg_color="transparent")
@@ -150,25 +158,25 @@ class MainView(ctk.CTkFrame):
             actions,
             text="Ahora no",
             command=self._dismiss_alert,
-            height=36,
-            width=80,
+            height=38,
+            width=88,
             corner_radius=8,
             fg_color="transparent",
             hover_color="#f5e8e4",
             text_color="#887b79",
-            font=fnt(10, True),
+            font=fnt(11, True),
         ).pack(side="left", padx=(0, 8))
         ctk.CTkButton(
             actions,
             text="Ver ejercicios",
             command=self.on_recommendations,
-            height=36,
-            width=136,
+            height=38,
+            width=146,
             corner_radius=8,
             fg_color=SALMON,
             hover_color="#b85f4d",
             text_color="#ffffff",
-            font=fnt(10, True),
+            font=fnt(11, True),
         ).pack(side="left")
 
     def _build_footer(self, parent):
@@ -184,26 +192,26 @@ class MainView(ctk.CTkFrame):
         dot.pack_propagate(False)
         text = ctk.CTkFrame(left, fg_color="transparent")
         text.pack(side="left")
-        label(text, "Todo funciona correctamente", 11, TEXT_STRONG, True, bg=BG).pack(anchor="w")
-        label(text, "Ultima comprobacion hace 12 segundos", 9, "#9ba1af", bg=BG).pack(anchor="w", pady=(2, 0))
+        label(text, "Todo funciona correctamente", 12, TEXT_STRONG, True, bg=BG).pack(anchor="w")
+        label(text, "Ultima comprobacion hace 12 segundos", 10, "#9ba1af", bg=BG).pack(anchor="w", pady=(2, 0))
 
-        self.pause_image = icon_image("pause", 14, "#656d7e", 1.8)
-        self.play_image = icon_image("play", 14, "#656d7e", 1.8)
+        self.pause_image = icon_image("pause", 15, "#656d7e", 1.8)
+        self.play_image = icon_image("play", 15, "#656d7e", 1.8)
         self.pause_button = ctk.CTkButton(
             footer,
             text="Pausar monitoreo",
             image=self.pause_image,
             compound="left",
             command=self._toggle_monitoring,
-            height=38,
-            width=184,
+            height=40,
+            width=196,
             corner_radius=8,
             fg_color="#ffffff",
             hover_color="#f7f6ff",
             border_width=1,
             border_color="#dde1e8",
             text_color="#656d7e",
-            font=fnt(11, True),
+            font=fnt(12, True),
         )
         self.pause_button.pack(side="right")
 

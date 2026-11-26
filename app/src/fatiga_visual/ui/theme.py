@@ -63,11 +63,13 @@ PAD = 56
 GAP = 20
 LEFT_W = round((WINDOW_W - PAD * 2 - GAP) * 158 / 238)
 FEED_W = LEFT_W - 36
-FEED_H = 360
+FEED_H = 500
 
-# Las medidas del diseño Figma están en píxeles CSS; mantener 1:1 evita que
-# el contenido de Monitoreo se salga de la ventana fija de 1512x1000.
-UI_SCALE = 1.25
+# Medidas base del diseño Figma. La geometría crece solo un poco para no salir
+# de la ventana fija; la tipografía tiene un refuerzo adicional porque los
+# subtítulos de 7-10 px del diseño se leían demasiado pequeños.
+UI_SCALE = 1.28
+FONT_SCALE = 1.12
 
 PIL_FONT_CACHE = {}
 ICON_CACHE = {}
@@ -77,12 +79,16 @@ def sp(px):
     return max(1, int(round(px * UI_SCALE)))
 
 
+def font_px(px):
+    return max(1, int(round(px * UI_SCALE * FONT_SCALE)))
+
+
 def fnt(px, bold=False):
-    return (FONT, -sp(px), "bold" if bold else "normal")
+    return (FONT, -font_px(px), "bold" if bold else "normal")
 
 
 def pil_font(px, bold=False):
-    size = sp(px)
+    size = font_px(px)
     key = (size, bold)
     if key not in PIL_FONT_CACHE:
         try:
