@@ -139,6 +139,10 @@ class MqttAmbientClient:
             return
 
         if self.status_topic and message.topic == self.status_topic:
+            # Un "offline" retenido es de una sesión anterior: al arrancar no
+            # debe marcar el nodo como desconectado antes de oír tráfico nuevo.
+            if getattr(message, "retain", False) and payload == "offline":
+                return
             if payload in ("online", "offline"):
                 self.bus.publish("ambient.status", payload)
             return

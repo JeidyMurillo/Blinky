@@ -572,6 +572,45 @@ class FatigueRuleTests(unittest.TestCase):
         self.assertEqual(result.id, "eye-closure")
         self.assertEqual(result.severity, "high")
 
+    def test_perclos_warmup_suppresses_early_alert(self):
+        blink = BlinkMetrics(
+            timestamp=datetime.now(),
+            blinks=3,
+            blink_rate=18.0,
+            perclos=0.30,
+            long_closures=0,
+            elapsed_seconds=20.0,
+        )
+        self.assertIsNone(rules.prolonged_eye_closure(blink, None, None, self.THRESHOLDS))
+
+    def test_perclos_only_alert_uses_perclos_wording(self):
+        blink = BlinkMetrics(
+            timestamp=datetime.now(),
+            blinks=18,
+            blink_rate=18.0,
+            perclos=0.22,
+            long_closures=0,
+            elapsed_seconds=60.0,
+        )
+        result = rules.prolonged_eye_closure(blink, None, None, self.THRESHOLDS)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "eye-closure")
+        self.assertIn("PERCLOS", result.title)
+        self.assertNotIn("cierres oculares prolongados", result.message)
+
+    def test_long_closure_alert_is_not_blocked_by_warmup(self):
+        blink = BlinkMetrics(
+            timestamp=datetime.now(),
+            blinks=4,
+            blink_rate=18.0,
+            perclos=0.05,
+            long_closures=3,
+            elapsed_seconds=20.0,
+        )
+        result = rules.prolonged_eye_closure(blink, None, None, self.THRESHOLDS)
+        self.assertIsNotNone(result)
+        self.assertIn("cierres oculares prolongados", result.message)
+
     def test_low_confidence_is_ignored(self):
         blink = BlinkMetrics(
             timestamp=datetime.now(),

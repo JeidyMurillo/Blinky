@@ -63,11 +63,11 @@ PAD = 56
 GAP = 20
 LEFT_W = round((WINDOW_W - PAD * 2 - GAP) * 158 / 238)
 FEED_W = LEFT_W - 36
-FEED_H = 445
+FEED_H = 360
 
 # Las medidas del diseño Figma están en píxeles CSS; mantener 1:1 evita que
 # el contenido de Monitoreo se salga de la ventana fija de 1512x1000.
-UI_SCALE = 1.0
+UI_SCALE = 1.25
 
 PIL_FONT_CACHE = {}
 ICON_CACHE = {}

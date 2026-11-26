@@ -78,6 +78,7 @@ DEFAULTS = {
         "blink_low_min_samples": 3,
         "blink_low_max_gap_seconds": 60,
         "perclos_high": 0.15,
+        "perclos_min_observation_seconds": 60,
         "long_closures_per_minute": 3,
         "continuous_minutes": 20,
         "cooldown_seconds": 300,

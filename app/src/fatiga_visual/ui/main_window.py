@@ -62,6 +62,7 @@ class MainWindow(ctk.CTk):
         self._poll_job = None
         self._pending_borderless = False
 
+        self.protocol("WM_DELETE_WINDOW", self._close)
         self.bind("<Map>", self._on_map)
         self._build_bar()
         self._content = ctk.CTkFrame(self, fg_color=BG, corner_radius=0)
@@ -184,6 +185,8 @@ class MainWindow(ctk.CTk):
                     continue
                 seen.add(topic)
                 self._on_state(topic)
+                if topic == "blink":
+                    self.after(180, self.app_state.release_blink_visual)
         finally:
             self._poll_job = self.after(100, self._poll_state)
 
@@ -249,27 +252,32 @@ class MainWindow(ctk.CTk):
             pass
 
     def _minimize(self):
-        # Con overrideredirect(True) la ventana no tiene boton en la barra de
-        # tareas: al minimizar quedaria inaccesible. La vuelta temporal a una
-        # ventana normal le da boton propio y el <Map> de la restauracion
-        # vuelve a quitar el borde.
+        # Una ventana overrideredirect NO tiene botón en la barra de tareas:
+        # si se iconifica directamente queda inaccesible. Se vuelve normal,
+        # se le asegura entrada en la barra y entonces sí se iconifica.
+        if os.name == "nt":
+            self.overrideredirect(False)
+            self.update_idletasks()
+            self._ensure_taskbar_entry()
         self._pending_borderless = True
-        self.withdraw()
-        self.overrideredirect(False)
-        self.state("iconic")
+        self.iconify()
 
     def _on_map(self, event):
-        if self._pending_borderless and self.state() == "normal":
-            self._pending_borderless = False
+        if self._pending_borderless:
             self.after_idle(self._restore_borderless)
 
     def _restore_borderless(self):
-        if self.state() != "normal":
-            self._pending_borderless = True
+        if not self._pending_borderless:
             return
+        if self.state() != "normal":
+            self.after(100, self._restore_borderless)
+            return
+        self._pending_borderless = False
         self.overrideredirect(True)
         self.geometry(self._normal_geometry)
         self._ensure_taskbar_entry()
+        self.lift()
+        self.focus_force()
 
     def _close(self):
         self.destroy()

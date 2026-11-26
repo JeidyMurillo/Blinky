@@ -1,7 +1,7 @@
 import sys
 import types
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -15,6 +15,7 @@ from fatiga_visual.core.models import FaceOverlay, VisionFrame
 from fatiga_visual.runtime import pipeline as pipeline_module
 from fatiga_visual.runtime.pipeline import RuntimePipeline
 from fatiga_visual.ui.state import AppState
+from fatiga_visual.ui.widgets.camera_widget import CameraWidget
 from fatiga_visual.vision.face_landmarks import (
     IRIS_CENTER_INDICES,
     overlay_from_landmarks,
@@ -62,6 +63,28 @@ class OverlayGeometryTests(unittest.TestCase):
         self.assertEqual(points["left_eye"], ((220, 117),))
         self.assertEqual(points["right_eye"], ())
         self.assertEqual(points["irises"], ())
+
+
+class CameraGuideTests(unittest.TestCase):
+    def test_guide_does_not_claim_a_face_when_landmarks_are_missing(self):
+        widget = CameraWidget.__new__(CameraWidget)
+        draw = mock.Mock()
+
+        widget._draw_face_guide(draw)
+
+        texts = [call.args[1] for call in draw.text.call_args_list]
+        self.assertNotIn("Rostro detectado", texts)
+        self.assertTrue(any("Colocate frente a la camara" in text for text in texts))
+
+    def test_stale_overlay_is_not_drawn_as_a_detected_face(self):
+        widget = CameraWidget.__new__(CameraWidget)
+        widget.state = mock.Mock()
+        widget.state.face_overlay = FaceOverlay(
+            timestamp=datetime.now() - timedelta(seconds=3),
+            oval=((0.5, 0.5), (0.6, 0.6), (0.7, 0.7)),
+        )
+
+        self.assertIsNone(widget._fresh_overlay())
 
 
 class FakeDetector:

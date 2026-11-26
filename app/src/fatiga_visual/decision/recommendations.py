@@ -31,16 +31,25 @@ def low_blink_rate(blink_rate, threshold=None, sustained_seconds=None):
     )
 
 
-def prolonged_eye_closure(perclos, long_closures):
+def prolonged_eye_closure(perclos, long_closures, long_limit=None):
     percent = max(0.0, perclos) * 100.0
-    return Recommendation(
-        id="eye-closure",
-        title="Descansa la vista ahora",
-        message=(
+    if long_limit is not None and long_closures >= long_limit:
+        title = "Descansa la vista ahora"
+        message = (
             f"Detectamos cierres oculares prolongados ({long_closures} en el ultimo minuto; "
             f"{percent:.0f}% del tiempo con los ojos cerrados). "
             "Mira un punto lejano durante 20 segundos y parpadea de forma consciente."
-        ),
+        )
+    else:
+        title = "PERCLOS alto"
+        message = (
+            f"El {percent:.0f}% del tiempo observado tienes los ojos cerrados. "
+            "Mira un punto lejano durante 20 segundos y parpadea de forma consciente."
+        )
+    return Recommendation(
+        id="eye-closure",
+        title=title,
+        message=message,
         severity="high",
         action="Ver recomendaciones",
         created_at=datetime.now(),

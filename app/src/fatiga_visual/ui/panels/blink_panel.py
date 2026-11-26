@@ -42,7 +42,7 @@ class BlinkPanel(ctk.CTkFrame):
         eye_card = card_frame(self)
         eye_card.pack(fill="x")
         top = ctk.CTkFrame(eye_card, fg_color="transparent")
-        top.pack(fill="x", padx=17, pady=(17, 0))
+        top.pack(fill="x", padx=17, pady=(14, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
         label(titles, "Estado de los ojos", 14, TEXT_STRONG, True).pack(anchor="w")
@@ -62,11 +62,11 @@ class BlinkPanel(ctk.CTkFrame):
         self.status_label.pack(side="left", padx=(0, 10), pady=5)
 
         eyes = ctk.CTkFrame(eye_card, fg_color="transparent")
-        eyes.pack(fill="x", padx=17, pady=(14, 0))
+        eyes.pack(fill="x", padx=17, pady=(12, 0))
         eyes.grid_columnconfigure(0, weight=1, uniform="eyes")
         eyes.grid_columnconfigure(1, weight=1, uniform="eyes")
-        self.eye_open_image = icon_image("eye", 48, "#5f55cc", 1.5)
-        self.eye_closed_image = icon_image("eye_closed", 48, "#5f55cc", 1.5)
+        self.eye_open_image = icon_image("eye", 40, "#5f55cc", 1.5)
+        self.eye_closed_image = icon_image("eye_closed", 40, "#5f55cc", 1.5)
         self.eye_labels = []
         for column in range(2):
             box = ctk.CTkFrame(
@@ -75,7 +75,7 @@ class BlinkPanel(ctk.CTkFrame):
                 corner_radius=10,
                 border_width=1,
                 border_color="#eceef4",
-                height=70,
+                height=64,
             )
             box.grid(
                 row=0,
@@ -91,7 +91,7 @@ class BlinkPanel(ctk.CTkFrame):
             self.eye_labels.append(image_label)
 
         labels_row = ctk.CTkFrame(eye_card, fg_color="transparent")
-        labels_row.pack(fill="x", padx=17, pady=(8, 17))
+        labels_row.pack(fill="x", padx=17, pady=(6, 12))
         labels_row.grid_columnconfigure(0, weight=1, uniform="eyelabels")
         labels_row.grid_columnconfigure(1, weight=1, uniform="eyelabels")
         self.eye_state_labels = []
@@ -110,11 +110,11 @@ class BlinkPanel(ctk.CTkFrame):
 
         # Tarjeta compacta de tiempo de sesión (session-time-card en Figma).
         chrono = card_frame(self)
-        chrono.configure(height=74)
+        chrono.configure(height=82)
         chrono.pack(fill="x", pady=(14, 0))
         chrono.pack_propagate(False)
         chrono_inner = ctk.CTkFrame(chrono, fg_color="transparent")
-        chrono_inner.pack(fill="both", expand=True, padx=17, pady=13)
+        chrono_inner.pack(fill="both", expand=True, padx=17, pady=9)
 
         tile = ctk.CTkFrame(chrono_inner, width=34, height=34, fg_color="#e9f3ff", corner_radius=9)
         tile.pack(side="left", padx=(0, 12))
@@ -145,7 +145,7 @@ class BlinkPanel(ctk.CTkFrame):
         metrics = card_frame(self)
         metrics.pack(fill="x", pady=(14, 0))
         top = ctk.CTkFrame(metrics, fg_color="transparent")
-        top.pack(fill="x", padx=17, pady=(17, 0))
+        top.pack(fill="x", padx=17, pady=(14, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
         label(titles, "Métricas de parpadeo", 14, TEXT_STRONG, True).pack(anchor="w")
@@ -154,7 +154,7 @@ class BlinkPanel(ctk.CTkFrame):
         )
 
         metrics_grid = ctk.CTkFrame(metrics, fg_color="transparent")
-        metrics_grid.pack(fill="x", padx=17, pady=(13, 17))
+        metrics_grid.pack(fill="x", padx=17, pady=(11, 12))
         metrics_grid.grid_columnconfigure(0, weight=1, uniform="metric")
         metrics_grid.grid_columnconfigure(1, weight=1, uniform="metric")
 
@@ -175,11 +175,11 @@ class BlinkPanel(ctk.CTkFrame):
             "Rango saludable", "%", 19,
         )
 
-        stats = ctk.CTkFrame(self, fg_color="#6b5de0", corner_radius=12, height=64)
-        stats.pack(fill="x", pady=(14, 0))
+        stats = ctk.CTkFrame(self, fg_color="#6b5de0", corner_radius=12, height=60)
+        stats.pack(fill="x", pady=(12, 0))
         stats.pack_propagate(False)
         inner = ctk.CTkFrame(stats, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=14, pady=12)
+        inner.pack(fill="both", expand=True, padx=14, pady=10)
         tile = ctk.CTkFrame(inner, width=34, height=34, fg_color="#7c6de8", corner_radius=9)
         tile.pack(side="left", padx=(0, 11))
         tile.pack_propagate(False)
@@ -210,7 +210,7 @@ class BlinkPanel(ctk.CTkFrame):
             corner_radius=10,
             border_width=1,
             border_color="#eceef4",
-            height=85,
+            height=78,
         )
         card.grid(
             row=row,
@@ -221,7 +221,7 @@ class BlinkPanel(ctk.CTkFrame):
         )
         card.pack_propagate(False)
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=12, pady=12)
+        inner.pack(fill="both", expand=True, padx=10, pady=8)
         tile = ctk.CTkFrame(inner, width=34, height=34, fg_color=icon_bg, corner_radius=9)
         tile.pack(side="left", padx=(0, 10))
         tile.pack_propagate(False)
@@ -261,6 +261,17 @@ class BlinkPanel(ctk.CTkFrame):
             if settings
             else defaults["long_closures_per_minute"]
         )
+        blink_rate_low = (
+            settings.get("thresholds.blink_rate_low")
+            if settings
+            else defaults["blink_rate_low"]
+        )
+        perclos_min = (
+            settings.get("thresholds.perclos_min_observation_seconds")
+            if settings
+            else defaults["perclos_min_observation_seconds"]
+        )
+        perclos_ready = (getattr(state, "blink_elapsed_seconds", 0.0) or 0.0) >= perclos_min
         status = getattr(state, "vision_status", None)
         available = getattr(status, "available", True)
         backend = getattr(status, "backend", "") or ""
@@ -291,12 +302,15 @@ class BlinkPanel(ctk.CTkFrame):
         elif not face_found:
             title, fg, dot, text = "Sin rostro", "#eef0f4", "#9ba1b0", "#667087"
             subtitle = "Colocate frente a la camara"
-        elif state.perclos >= perclos_high or state.long_closures >= long_limit:
+        elif state.long_closures >= long_limit:
             title, fg, dot, text = "Fatiga alta", "#fdeceb", "#c96e5b", "#a84536"
             subtitle = "Cierres largos detectados"
+        elif state.perclos >= perclos_high and perclos_ready:
+            title, fg, dot, text = "Fatiga alta", "#fdeceb", "#c96e5b", "#a84536"
+            subtitle = f"PERCLOS {state.perclos * 100:.0f}%"
         elif state.perclos >= perclos_high * 0.55:
             title, fg, dot, text = "Vigilar", "#fff0e4", "#dd8141", "#a65a21"
-            subtitle = "Deteccion activa"
+            subtitle = "PERCLOS en aumento"
         else:
             title, fg, dot, text = "Normal", "#e9f8f1", "#39a977", "#2d8a63"
             subtitle = "Deteccion activa"
@@ -344,7 +358,13 @@ class BlinkPanel(ctk.CTkFrame):
 
         # Métricas de parpadeo.
         self.blink_value.configure(text=str(state.blinks))
-        self.blink_subtitle.configure(text=f"{state.blink_rate:.0f} por minuto")
+        rate_status = state.blink_rate_status(blink_rate_low)
+        trend = {1: "↑", -1: "↓", 0: "→"}.get(state.blink_rate_trend(), "→")
+        rate_text = f"{state.blink_rate:.0f}/min · {rate_status} {trend}"
+        self.blink_subtitle.configure(
+            text=rate_text,
+            fg="#c96e5b" if rate_status == "Baja" else "#5eb68d" if rate_status == "Normal" else None,
+        )
         duration = state.blink_duration_ms
         self.duration_value.configure(text=f"{duration:.0f}")
         if duration <= 0:

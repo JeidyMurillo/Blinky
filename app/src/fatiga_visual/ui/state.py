@@ -30,11 +30,16 @@ class AppState:
         self.session_seconds = int(settings.get("session.initial_seconds", 0)) if seed_demo else 0
         self.blinks = int(settings.get("session.initial_blinks", 0)) if seed_demo else 0
         self.blink_rate = float(settings.get("session.blink_rate", 0)) if seed_demo else 0.0
+        # Historial corto para la tendencia del panel; una muestra cada 5 s.
+        self.blink_rate_history = []
+        self._last_rate_sample_at = None
         self.eyes_closed = False
+        self._blink_visual_until = None
         self.ear = 0.0
         self.blink_duration_ms = 0.0
         self.inter_blink_seconds = 0.0
         self.perclos = 0.0
+        self.blink_elapsed_seconds = 0.0
         self.long_closures = 0
         self.confidence = 1.0
         self.calibration_progress = 1.0
@@ -237,6 +242,39 @@ class AppState:
             key=lambda item: (priority.get(item.severity, 3), item.created_at),
         )[0]
 
+    def blink_rate_status(self, threshold):
+        """Estado de la tasa frente al umbral; sin datos no es 'Normal'."""
+        if self.blink_rate <= 0 or self.blink_elapsed_seconds <= 0:
+            return "Sin datos"
+        return "Baja" if self.blink_rate < float(threshold) else "Normal"
+
+    def blink_rate_trend(self):
+        """1 sube, -1 baja, 0 estable; compara la última muestra con las previas."""
+        history = self.blink_rate_history
+        if len(history) < 2:
+            return 0
+        previous = sum(history[:-1]) / len(history[:-1])
+        difference = history[-1] - previous
+        if difference > 1.0:
+            return 1
+        if difference < -1.0:
+            return -1
+        return 0
+
+    def _sample_blink_rate(self):
+        """Guarda una muestra cada 5 s para no llenar el historial con duplicados."""
+        if self.blink_rate <= 0:
+            return
+        now = datetime.now()
+        if self._last_rate_sample_at is not None:
+            elapsed = (now - self._last_rate_sample_at).total_seconds()
+            if elapsed < 5.0:
+                return
+        self.blink_rate_history.append(float(self.blink_rate))
+        self._last_rate_sample_at = now
+        if len(self.blink_rate_history) > 6:
+            self.blink_rate_history.pop(0)
+
     def complete_recommendation(self, recommendation_id):
         self.recommendations = [item for item in self.recommendations if item.id != recommendation_id]
         self.alert_dismissed = False
@@ -255,11 +293,17 @@ class AppState:
             return
         self.blinks = metrics.blinks
         self.blink_rate = metrics.blink_rate
-        self.eyes_closed = metrics.eyes_closed
+        self._sample_blink_rate()
+        visual_hold = (
+            self._blink_visual_until is not None
+            and datetime.now() < self._blink_visual_until
+        )
+        self.eyes_closed = True if visual_hold else metrics.eyes_closed
         self.ear = getattr(metrics, "ear", 0.0)
         self.blink_duration_ms = getattr(metrics, "mean_blink_duration_ms", 0.0)
         self.inter_blink_seconds = getattr(metrics, "inter_blink_seconds", 0.0)
         self.perclos = getattr(metrics, "perclos", 0.0)
+        self.blink_elapsed_seconds = getattr(metrics, "elapsed_seconds", 0.0)
         self.long_closures = getattr(metrics, "long_closures", 0)
         self.confidence = getattr(metrics, "confidence", 1.0)
         self.calibration_progress = getattr(metrics, "calibration_progress", 1.0)
@@ -272,6 +316,17 @@ class AppState:
             return
         self.last_blink_at = getattr(event, "timestamp", None)
         self.last_blink_kind = getattr(event, "kind", None)
+        # El evento llega en tiempo real; el snapshot de métricas va cada 0,5 s
+        # y puede perderse un parpadeo. Mantenemos los iconos cerrados 180 ms.
+        self._blink_visual_until = datetime.now() + timedelta(milliseconds=180)
+        self.eyes_closed = True
+        self.emit("blink")
+
+    def release_blink_visual(self):
+        self._blink_visual_until = None
+        if not self.eyes_closed:
+            return
+        self.eyes_closed = False
         self.emit("blink")
 
     def update_vision_status(self, status):
@@ -315,12 +370,12 @@ class AppState:
         self.emit("ambient")
 
     def update_ambient_status(self, status):
-        if status != "offline":
+        if status not in ("online", "offline"):
             return
-        connected = getattr(self.ambient, "connected", True)
-        if not connected:
+        connected = status == "online"
+        if getattr(self.ambient, "connected", True) == connected:
             return
         self.ambient = self.ambient.__class__(
-            **{**self.ambient.__dict__, "connected": False}
+            **{**self.ambient.__dict__, "connected": connected}
         )
         self.emit("ambient")

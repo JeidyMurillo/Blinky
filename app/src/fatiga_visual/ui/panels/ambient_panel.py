@@ -11,7 +11,9 @@ import customtkinter as ctk
 
 from fatiga_visual.core.config import DEFAULTS
 from fatiga_visual.ui.theme import (
+    AMBER_TEXT,
     MUTED_SOFT,
+    SALMON,
     TEXT_STRONG,
     card_frame,
     icon_image,
@@ -75,7 +77,7 @@ class AmbientStrip(ctk.CTkFrame):
     """Franja sensor-strip bajo la cámara: temperatura, humedad e iluminación."""
 
     def __init__(self, master, settings=None):
-        super().__init__(master, fg_color="#ffffff", corner_radius=0, height=76)
+        super().__init__(master, fg_color="#ffffff", corner_radius=0, height=88)
         self.settings = settings
         self.pack_propagate(False)
         self.grid_propagate(False)
@@ -97,7 +99,7 @@ class AmbientStrip(ctk.CTkFrame):
         )
 
     def _item(self, column, icon, icon_color, icon_bg, title, unit):
-        item = ctk.CTkFrame(self, fg_color="#ffffff")
+        item = ctk.CTkFrame(self, fg_color="#ffffff", height=88)
         item.grid(row=0, column=column, sticky="nsew")
         item.grid_propagate(False)
         if column:
@@ -139,34 +141,41 @@ class AmbientStrip(ctk.CTkFrame):
         )
 
     def refresh(self, ambient):
-        """Muestra los tres valores o '--' si el nodo no tiene lectura válida."""
-        connected = ambient is not None and getattr(ambient, "connected", False)
-        if not connected:
+        """Muestra la última lectura; si el nodo está offline lo indica."""
+        if ambient is None:
             for value, note in (
                 (self.temperature, self.temperature_note),
                 (self.humidity, self.humidity_note),
                 (self.lux, self.lux_note),
             ):
-                value.configure(text="--", fg="#c96e5b")
-                note.configure(text="Sin datos", fg="#c96e5b")
+                value.configure(text="--", fg=SALMON)
+                note.configure(text="Sin datos", fg=SALMON)
             return
+
+        connected = bool(getattr(ambient, "connected", False))
+        offline_note = "Sin señal" if not connected else None
+        offline_color = AMBER_TEXT if not connected else None
+        value_color = MUTED_SOFT if not connected else TEXT_STRONG
 
         temp_min, temp_max = self._threshold("temperature_min")
         hum_min, hum_max = self._threshold("humidity_min")
         lux_min, lux_max = self._threshold("lux_min")
+        temp_ok = temp_min <= ambient.temperature_c <= temp_max
+        hum_ok = hum_min <= ambient.humidity <= hum_max
+        lux_ok = lux_min <= ambient.lux <= lux_max
 
-        self.temperature.configure(text=f"{ambient.temperature_c:.1f}", fg=TEXT_STRONG)
+        self.temperature.configure(text=f"{ambient.temperature_c:.1f}", fg=value_color)
         self.temperature_note.configure(
-            text="Óptima" if temp_min <= ambient.temperature_c <= temp_max else "Fuera de rango",
-            fg="#5eb68d" if temp_min <= ambient.temperature_c <= temp_max else "#dd8141",
+            text=offline_note or ("Óptima" if temp_ok else "Fuera de rango"),
+            fg=offline_color or ("#5eb68d" if temp_ok else "#dd8141"),
         )
-        self.humidity.configure(text=f"{ambient.humidity:.0f}", fg=TEXT_STRONG)
+        self.humidity.configure(text=f"{ambient.humidity:.0f}", fg=value_color)
         self.humidity_note.configure(
-            text="Confortable" if hum_min <= ambient.humidity <= hum_max else "Fuera de rango",
-            fg="#5eb68d" if hum_min <= ambient.humidity <= hum_max else "#dd8141",
+            text=offline_note or ("Confortable" if hum_ok else "Fuera de rango"),
+            fg=offline_color or ("#5eb68d" if hum_ok else "#dd8141"),
         )
-        self.lux.configure(text=f"{ambient.lux:.0f}", fg=TEXT_STRONG)
+        self.lux.configure(text=f"{ambient.lux:.0f}", fg=value_color)
         self.lux_note.configure(
-            text="Adecuada" if lux_min <= ambient.lux <= lux_max else "Fuera de rango",
-            fg="#5eb68d" if lux_min <= ambient.lux <= lux_max else "#dd8141",
+            text=offline_note or ("Adecuada" if lux_ok else "Fuera de rango"),
+            fg=offline_color or ("#5eb68d" if lux_ok else "#dd8141"),
         )

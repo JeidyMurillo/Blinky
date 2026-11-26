@@ -135,6 +135,25 @@ class AmbientStripTests(unittest.TestCase):
         self.assertEqual(strip.humidity_note.text, "Fuera de rango")
         self.assertEqual(strip.lux_note.text, "Fuera de rango")
 
+    def test_strip_keeps_last_values_when_node_is_offline(self):
+        strip = self._strip()
+        reading = AmbientReading(
+            timestamp=datetime(2026, 1, 1, 12, 0, 0),
+            lux=420.0,
+            temperature_c=23.4,
+            humidity=48.0,
+            connected=False,
+        )
+
+        strip.refresh(reading)
+
+        self.assertEqual(strip.temperature.text, "23.4")
+        self.assertEqual(strip.humidity.text, "48")
+        self.assertEqual(strip.lux.text, "420")
+        self.assertEqual(strip.temperature_note.text, "Sin señal")
+        self.assertEqual(strip.humidity_note.text, "Sin señal")
+        self.assertEqual(strip.lux_note.text, "Sin señal")
+
 
 if __name__ == "__main__":
     unittest.main()
