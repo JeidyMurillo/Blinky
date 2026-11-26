@@ -1,7 +1,7 @@
 """Interfaz 1: Monitoreo en vivo.
 
 Qué va aquí:
-- Camara en vivo, estado de los ojos, métricas de sesión y alerta prioritaria.
+- Camara en vivo con valores ambientales debajo, estado de los ojos, métricas de sesión y alerta prioritaria.
 - Pausar/reanudar el monitoreo y activar/apagar la camara.
 
 Se actualiza con refresh(topic). El reloj y la simulación de parpadeo los
@@ -10,6 +10,7 @@ controla MainWindow mediante AppState.
 
 import customtkinter as ctk
 
+from fatiga_visual.ui.panels.ambient_panel import AmbientStrip
 from fatiga_visual.ui.panels.blink_panel import BlinkPanel
 from fatiga_visual.ui.theme import (
     ALERT_BG,
@@ -75,8 +76,10 @@ class MainView(ctk.CTkFrame):
         grid.grid_rowconfigure(0, weight=1)
 
         self._build_camera_card(grid)
-        self.panel = BlinkPanel(grid, on_stats)
-        self.panel.grid(row=0, column=1, sticky="nsew")
+        right = ctk.CTkFrame(grid, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="nsew")
+        self.panel = BlinkPanel(right, on_stats)
+        self.panel.pack(fill="x")
         self._build_alert(main)
         self._build_footer(main)
         self.refresh()
@@ -120,30 +123,8 @@ class MainView(ctk.CTkFrame):
         self.feed.on_lost = self._on_camera_lost
         self.feed.pack(padx=17, pady=(15, 0))
 
-        sensor_strip = ctk.CTkFrame(card, fg_color="transparent", height=56)
-        sensor_strip.pack(fill="x", padx=18)
-        sensor_strip.grid_propagate(False)
-        for column in range(3):
-            sensor_strip.grid_columnconfigure(column, weight=1)
-
-        self.sensor_values = {}
-        sensors = [
-            ("Camara", "En espera"),
-            ("Sensor ambiental", "Conectado"),
-            ("Deteccion facial", "En espera"),
-        ]
-        for index, (name, value) in enumerate(sensors):
-            item = ctk.CTkFrame(sensor_strip, fg_color="transparent")
-            item.grid(row=0, column=index, sticky="nsew")
-            inner = ctk.CTkFrame(item, fg_color="transparent")
-            inner.place(relx=0.5, rely=0.5, anchor="center")
-            dot = ctk.CTkFrame(inner, width=6, height=6, fg_color="#44bc87", corner_radius=3)
-            dot.pack(side="left", padx=(0, 6))
-            dot.pack_propagate(False)
-            label(inner, name, 9, "#9299aa").pack(side="left")
-            value_label = label(inner, " " + value, 9, "#596176", True)
-            value_label.pack(side="left")
-            self.sensor_values[name] = value_label
+        self.ambient_strip = AmbientStrip(card, settings=getattr(self.state, "settings", None))
+        self.ambient_strip.pack(fill="x", padx=17, pady=(15, 0))
 
     def _build_alert(self, parent):
         self.alert = ctk.CTkFrame(parent, fg_color=ALERT_BG, corner_radius=12, border_width=1, border_color=ALERT_BORDER)
@@ -238,8 +219,6 @@ class MainView(ctk.CTkFrame):
         self._camera_busy = True
         self.camera_button.configure(text="Conectando...", state="disabled")
         self.feed.set_state("connecting")
-        self.sensor_values["Camara"].configure(text=" Conectando")
-        self.sensor_values["Deteccion facial"].configure(text=" Conectando")
         self.feed.start(self._on_camera_ready)
 
     def _on_camera_ready(self, ok, message):
@@ -248,14 +227,10 @@ class MainView(ctk.CTkFrame):
         if ok:
             self.camera_on = True
             self.camera_button.configure(text="Apagar camara")
-            self.sensor_values["Camara"].configure(text=" Activa")
-            self.sensor_values["Deteccion facial"].configure(text=" Activa")
         else:
             self.camera_on = False
             self.camera_button.configure(text="Activar camara")
             self.feed.set_state("error")
-            self.sensor_values["Camara"].configure(text=" En espera")
-            self.sensor_values["Deteccion facial"].configure(text=" En espera")
         self.state.set_camera(self.camera_on)
 
     def _stop_camera(self):
@@ -263,8 +238,6 @@ class MainView(ctk.CTkFrame):
         self._camera_busy = False
         self.camera_button.configure(text="Activar camara", state="normal")
         self.feed.set_state("off")
-        self.sensor_values["Camara"].configure(text=" En espera")
-        self.sensor_values["Deteccion facial"].configure(text=" En espera")
         self.update_idletasks()
         self.feed.stop()
         self.state.set_camera(False)
@@ -275,8 +248,6 @@ class MainView(ctk.CTkFrame):
         self.camera_button.configure(text="Activar camara", state="normal")
         self.feed.stop()
         self.feed.set_state("error")
-        self.sensor_values["Camara"].configure(text=" En espera")
-        self.sensor_values["Deteccion facial"].configure(text=" En espera")
         self.state.set_camera(False)
 
     def _toggle_monitoring(self):
@@ -299,6 +270,8 @@ class MainView(ctk.CTkFrame):
             self.pause_button.configure(text="Reanudar monitoreo", image=self.play_image)
 
         self.panel.refresh(state)
+
+        self.ambient_strip.refresh(getattr(state, "ambient", None))
 
         primary = state.primary_recommendation()
         if primary is None or state.alert_dismissed:

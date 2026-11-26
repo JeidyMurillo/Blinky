@@ -1,8 +1,9 @@
-"""Panel derecho de Monitoreo: ojos, métricas de sesión y acceso a estadísticas.
+"""Panel derecho de Monitoreo: ojos, tiempo de sesión y métricas de parpadeo.
 
 Qué va aquí:
 - Tarjeta de estado ocular (ojo izquierdo/derecho).
-- Tarjetas de parpadeos, temperatura, iluminación y tiempo activo.
+- Tarjeta compacta con el tiempo de la sesión.
+- Cuatro métricas de parpadeo: parpadeos, duración media, cierres largos y PERCLOS.
 - Botón grande que navega a la vista de Estadísticas.
 
 Se refresca con refresh(state) sin conocer la cámara ni MQTT.
@@ -30,7 +31,6 @@ from fatiga_visual.ui.theme import (
     format_clock,
     icon_image,
     label,
-    sp,
 )
 
 
@@ -69,10 +69,24 @@ class BlinkPanel(ctk.CTkFrame):
         self.eye_closed_image = icon_image("eye_closed", 48, "#5f55cc", 1.5)
         self.eye_labels = []
         for column in range(2):
-            box = ctk.CTkFrame(eyes, fg_color="#f7f8fb", corner_radius=10, border_width=1, border_color="#eceef4", height=70)
-            box.grid(row=0, column=column, sticky="nsew", padx=(0, 5) if column == 0 else (5, 0))
+            box = ctk.CTkFrame(
+                eyes,
+                fg_color="#f7f8fb",
+                corner_radius=10,
+                border_width=1,
+                border_color="#eceef4",
+                height=70,
+            )
+            box.grid(
+                row=0,
+                column=column,
+                sticky="nsew",
+                padx=(0, 5) if column == 0 else (5, 0),
+            )
             box.grid_propagate(False)
-            image_label = ctk.CTkLabel(box, text="", image=self.eye_open_image, fg_color="#f7f8fb")
+            image_label = ctk.CTkLabel(
+                box, text="", image=self.eye_open_image, fg_color="#f7f8fb"
+            )
             image_label.place(relx=0.5, rely=0.5, anchor="center")
             self.eye_labels.append(image_label)
 
@@ -83,32 +97,27 @@ class BlinkPanel(ctk.CTkFrame):
         self.eye_state_labels = []
         for column, name in enumerate(("Ojo izquierdo", "Ojo derecho")):
             row = ctk.CTkFrame(labels_row, fg_color="transparent")
-            row.grid(row=0, column=column, sticky="ew", padx=(0, 7) if column == 0 else (7, 0))
+            row.grid(
+                row=0,
+                column=column,
+                sticky="ew",
+                padx=(0, 7) if column == 0 else (7, 0),
+            )
             label(row, name, 9, "#9ba1b0").pack(side="left")
             value = label(row, "Abierto", 9, "#39a977", True)
             value.pack(side="right")
             self.eye_state_labels.append(value)
 
+        # Tarjeta compacta de tiempo de sesión (session-time-card en Figma).
         chrono = card_frame(self)
+        chrono.configure(height=74)
         chrono.pack(fill="x", pady=(14, 0))
-        top = ctk.CTkFrame(chrono, fg_color="transparent")
-        top.pack(fill="x", padx=17, pady=(15, 0))
-        titles = ctk.CTkFrame(top, fg_color="transparent")
-        titles.pack(side="left")
-        label(titles, "Cronometro continuo", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Tiempo sin levantarte", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        chrono.pack_propagate(False)
+        chrono_inner = ctk.CTkFrame(chrono, fg_color="transparent")
+        chrono_inner.pack(fill="both", expand=True, padx=17, pady=13)
 
-        self.chrono_pill = ctk.CTkFrame(top, fg_color=GREEN_SOFT, corner_radius=13)
-        self.chrono_pill.pack(side="right", anchor="n")
-        self.chrono_status = label(
-            self.chrono_pill, "En curso", 10, GREEN_TEXT, True, bg=GREEN_SOFT
-        )
-        self.chrono_status.pack(padx=(10, 10), pady=5)
-
-        body = ctk.CTkFrame(chrono, fg_color="transparent")
-        body.pack(fill="x", padx=17, pady=(12, 0))
-        tile = ctk.CTkFrame(body, width=36, height=36, fg_color="#e9f3ff", corner_radius=9)
-        tile.pack(side="left")
+        tile = ctk.CTkFrame(chrono_inner, width=34, height=34, fg_color="#e9f3ff", corner_radius=9)
+        tile.pack(side="left", padx=(0, 12))
         tile.pack_propagate(False)
         ctk.CTkLabel(
             tile,
@@ -116,60 +125,55 @@ class BlinkPanel(ctk.CTkFrame):
             image=icon_image("clock", 18, "#4786d4", 1.8),
             fg_color="#e9f3ff",
         ).place(relx=0.5, rely=0.5, anchor="center")
-        self.chrono_value = label(body, "00:00:00", 26, TEXT_STRONG, True)
-        self.chrono_value.pack(side="left", padx=(12, 0))
-        self.chrono_note = label(body, "Proxima pausa en 20:00", 9, MUTED_SOFT)
-        self.chrono_note.pack(side="right", anchor="s", pady=(0, 4))
 
-        self.chrono_progress = ctk.CTkProgressBar(
-            chrono,
-            height=6,
-            corner_radius=3,
-            fg_color="#edf0f5",
-            progress_color=GREEN,
+        chrono_copy = ctk.CTkFrame(chrono_inner, fg_color="transparent")
+        chrono_copy.pack(side="left", fill="both", expand=True)
+        label(chrono_copy, "TIEMPO DE LA SESIÓN", 8, "#9ba2b3").pack(anchor="w")
+        self.chrono_value = label(chrono_copy, "00:00:00", 20, TEXT_STRONG, True)
+        self.chrono_value.pack(anchor="w", pady=(3, 0))
+        self.chrono_note = label(chrono_copy, "Monitoreo activo", 8, "#6b7488")
+        self.chrono_note.pack(anchor="w", pady=(2, 0))
+
+        self.chrono_pill = ctk.CTkFrame(chrono_inner, fg_color=GREEN_SOFT, corner_radius=13)
+        self.chrono_pill.pack(side="right", anchor="center")
+        self.chrono_status = label(
+            self.chrono_pill, "En curso", 10, GREEN_TEXT, True, bg=GREEN_SOFT
         )
-        self.chrono_progress.set(0.0)
-        self.chrono_progress.pack(fill="x", padx=17, pady=(12, 6))
+        self.chrono_status.pack(padx=(10, 10), pady=5)
 
-        footer = ctk.CTkFrame(chrono, fg_color="transparent")
-        footer.pack(fill="x", padx=17, pady=(0, 14))
-        self.chrono_detail = label(footer, "0 pausas registradas", 9, MUTED_SOFT)
-        self.chrono_detail.pack(side="left")
-        self.chrono_goal = label(footer, "Objetivo: 20 min", 9, MUTED_SOFT)
-        self.chrono_goal.pack(side="right")
-        self.break_detail = label(
-            chrono, "Sin pausas registradas todavia", 9, MUTED_SOFT
-        )
-        self.break_detail.pack(anchor="w", padx=17, pady=(0, 12))
-
+        # Cuatro métricas de parpadeo (metric-grid en Figma).
         metrics = card_frame(self)
         metrics.pack(fill="x", pady=(14, 0))
         top = ctk.CTkFrame(metrics, fg_color="transparent")
         top.pack(fill="x", padx=17, pady=(17, 0))
         titles = ctk.CTkFrame(top, fg_color="transparent")
         titles.pack(side="left")
-        label(titles, "Metricas de sesion", 14, TEXT_STRONG, True).pack(anchor="w")
-        label(titles, "Datos en tiempo real", 10, MUTED_SOFT).pack(anchor="w", pady=(3, 0))
+        label(titles, "Métricas de parpadeo", 14, TEXT_STRONG, True).pack(anchor="w")
+        label(titles, "Análisis ocular en tiempo real", 10, MUTED_SOFT).pack(
+            anchor="w", pady=(3, 0)
+        )
 
         metrics_grid = ctk.CTkFrame(metrics, fg_color="transparent")
         metrics_grid.pack(fill="x", padx=17, pady=(13, 17))
         metrics_grid.grid_columnconfigure(0, weight=1, uniform="metric")
         metrics_grid.grid_columnconfigure(1, weight=1, uniform="metric")
 
-        _, self.blink_value, _, self.blink_subtitle = self._metric(
-            metrics_grid, 0, 0, "eye", "#675cdd", "#eeecff", "PARPADEOS", "0", None, "0 por minuto"
+        _, self.blink_value, self.blink_subtitle = self._metric(
+            metrics_grid, 0, 0, "eye", "#675cdd", "#eeecff", "PARPADEOS", "0",
+            "0 por minuto",
         )
-        _, self.temp_value, _, self.temp_subtitle = self._metric(
-            metrics_grid, 0, 1, "thermo", "#dd8141", "#fff0e4", "TEMPERATURA", "23.4", "C", "Optima"
+        _, self.duration_value, self.duration_subtitle = self._metric(
+            metrics_grid, 0, 1, "clock", "#675cdd", "#eeecff", "DURACIÓN MEDIA", "184",
+            "Parpadeo normal", "ms", 19,
         )
-        _, self.light_value, _, self.light_subtitle = self._metric(
-            metrics_grid, 1, 0, "sun", "#cb9821", "#fff7d9", "ILUMINACION", "420", "lux", "Adecuada"
+        _, self.long_closures_value, self.long_closures_subtitle = self._metric(
+            metrics_grid, 1, 0, "eye_closed", "#c5656d", "#fdecef", "CIERRES LARGOS",
+            "0", "En esta sesión",
         )
-        _, self.timer_value, _, _ = self._metric(
-            metrics_grid, 1, 1, "clock", "#4786d4", "#e9f3ff", "TIEMPO ACTIVO", "00:00:00", None, "Sesion actual", 14
+        _, self.perclos_value, self.perclos_subtitle = self._metric(
+            metrics_grid, 1, 1, "gauge", "#278f96", "#e5f6f7", "PERCLOS", "0.0",
+            "Rango saludable", "%", 19,
         )
-        self.detail_label = label(metrics, "Deteccion pendiente", 9, MUTED_SOFT)
-        self.detail_label.pack(anchor="w", padx=17, pady=(0, 14))
 
         stats = ctk.CTkFrame(self, fg_color="#6b5de0", corner_radius=12, height=64)
         stats.pack(fill="x", pady=(14, 0))
@@ -179,13 +183,15 @@ class BlinkPanel(ctk.CTkFrame):
         tile = ctk.CTkFrame(inner, width=34, height=34, fg_color="#7c6de8", corner_radius=9)
         tile.pack(side="left", padx=(0, 11))
         tile.pack_propagate(False)
-        ctk.CTkLabel(tile, text="", image=icon_image("chart", 17, "#ffffff", 1.8), fg_color="#7c6de8").place(
-            relx=0.5, rely=0.5, anchor="center"
-        )
+        ctk.CTkLabel(
+            tile, text="", image=icon_image("chart", 17, "#ffffff", 1.8), fg_color="#7c6de8"
+        ).place(relx=0.5, rely=0.5, anchor="center")
         copy = ctk.CTkFrame(inner, fg_color="transparent")
         copy.pack(side="left", fill="both", expand=True)
-        label(copy, "Ver estadisticas", 12, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
-        label(copy, "Consulta tu progreso y tendencias", 9, "#d7d2f7", bg="#6b5de0").pack(anchor="w", pady=(3, 0))
+        label(copy, "Ver estadísticas", 12, "#ffffff", True, bg="#6b5de0").pack(anchor="w")
+        label(
+            copy, "Consulta tu progreso y tendencias", 9, "#d7d2f7", bg="#6b5de0"
+        ).pack(anchor="w", pady=(3, 0))
         ctk.CTkLabel(
             inner,
             text="",
@@ -194,14 +200,17 @@ class BlinkPanel(ctk.CTkFrame):
         ).pack(side="right", padx=(8, 2))
         bind_tree(stats, "<Button-1>", lambda _event: self.on_stats(), skip_buttons=False)
 
-    def _metric(self, parent, row, column, icon, icon_color, icon_bg, title, value, unit, subtitle, value_px=19):
+    def _metric(
+        self, parent, row, column, icon, icon_color, icon_bg, title, value,
+        subtitle, unit=None, value_px=19,
+    ):
         card = ctk.CTkFrame(
             parent,
             fg_color="#fafbfc",
             corner_radius=10,
             border_width=1,
             border_color="#eceef4",
-            height=max(85, sp(68)),
+            height=85,
         )
         card.grid(
             row=row,
@@ -216,9 +225,9 @@ class BlinkPanel(ctk.CTkFrame):
         tile = ctk.CTkFrame(inner, width=34, height=34, fg_color=icon_bg, corner_radius=9)
         tile.pack(side="left", padx=(0, 10))
         tile.pack_propagate(False)
-        ctk.CTkLabel(tile, text="", image=icon_image(icon, 18, icon_color, 1.8), fg_color=icon_bg).place(
-            relx=0.5, rely=0.5, anchor="center"
-        )
+        ctk.CTkLabel(
+            tile, text="", image=icon_image(icon, 18, icon_color, 1.8), fg_color=icon_bg
+        ).place(relx=0.5, rely=0.5, anchor="center")
         text = ctk.CTkFrame(inner, fg_color="transparent")
         text.pack(side="left", fill="x", expand=True)
         label(text, title, 8, "#9ba2b3").pack(anchor="w")
@@ -227,17 +236,13 @@ class BlinkPanel(ctk.CTkFrame):
         value_label = label(value_row, value, value_px, TEXT_STRONG, True)
         value_label.pack(side="left")
         if unit:
-            label(value_row, unit, 10, TEXT_STRONG).pack(side="left", padx=(3, 0), pady=(5, 0))
+            label(value_row, unit, 10, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
         subtitle_label = label(text, subtitle, 8, "#5eb68d")
         subtitle_label.pack(anchor="w", pady=(2, 0))
-        return card, value_label, value_row, subtitle_label
+        return card, value_label, subtitle_label
 
     def refresh(self, state):
-        self.blink_value.configure(text=str(state.blinks))
-        self.blink_subtitle.configure(text=f"{state.blink_rate:.0f} por minuto")
-        self.temp_value.configure(text=f"{state.ambient.temperature_c:.1f}")
-        self.light_value.configure(text=f"{state.ambient.lux:.0f}")
-        self.timer_value.configure(text=format_clock(state.session_seconds))
+        # Estados de los ojos.
         image = self.eye_closed_image if state.eyes_closed else self.eye_open_image
         eye_text = "Cerrado" if state.eyes_closed else "Abierto"
         color = "#c96e5b" if state.eyes_closed else "#39a977"
@@ -300,53 +305,18 @@ class BlinkPanel(ctk.CTkFrame):
         self.status_pill.configure(fg_color=fg)
         self.status_dot.configure(fg_color=dot)
         self.eye_subtitle.configure(text=subtitle)
-        self.detail_label.configure(
-            text=(
-                f"Duracion media {state.blink_duration_ms:.0f} ms  ·  "
-                f"PERCLOS {state.perclos * 100:.1f}%  ·  "
-                f"{state.long_closures} cierres largos"
-            )
-        )
 
+        # Tiempo de sesión y estado del cronómetro.
         continuous = state.continuous_seconds
         limit = state.break_after_seconds
-        self.chrono_value.configure(text=format_clock(continuous))
-        self.chrono_progress.set(min(1.0, continuous / float(limit)))
-        self.chrono_detail.configure(
-            text=f"{state.exposure.breaks_taken} pausas registradas"
-        )
-        self.chrono_goal.configure(text=f"Objetivo: {limit // 60} min")
-
-        last_break = getattr(state, "last_break", None)
+        self.chrono_value.configure(text=format_clock(state.session_seconds))
         if getattr(state, "break_active", False):
             active = state.active_break
-            self.break_detail.configure(
-                text=(
-                    "Pausa en curso desde "
-                    f"{getattr(active, 'started_at', datetime.now()):%H:%M}"
-                ),
-                fg="#4786d4",
-            )
-        elif last_break is not None:
-            started = getattr(last_break, "started_at", None)
-            moment = f" · {started:%H:%M}" if started is not None else ""
-            self.break_detail.configure(
-                text=(
-                    "Ultima pausa: "
-                    f"{format_clock(int(getattr(last_break, 'duration_seconds', 0)))}{moment}"
-                ),
-                fg=MUTED_SOFT,
-            )
-        else:
-            self.break_detail.configure(
-                text="Sin pausas registradas todavia", fg=MUTED_SOFT
-            )
-
-        if getattr(state, "break_active", False):
+            started = getattr(active, "started_at", datetime.now())
             status, bg, fg, color = (
                 "En pausa", "#eaf3ff", "#4786d4", "#4786d4",
             )
-            note = "El contador se reinicia al volver"
+            note = f"Pausa en curso desde {started:%H:%M}"
         elif state.break_due:
             status, bg, fg, color = (
                 "Pausa debida", "#fdeceb", SALMON, SALMON,
@@ -371,4 +341,26 @@ class BlinkPanel(ctk.CTkFrame):
         self.chrono_status.configure(text=status, fg=fg, bg=bg)
         self.chrono_pill.configure(fg_color=bg)
         self.chrono_note.configure(text=note, fg=color)
-        self.chrono_progress.configure(progress_color=color)
+
+        # Métricas de parpadeo.
+        self.blink_value.configure(text=str(state.blinks))
+        self.blink_subtitle.configure(text=f"{state.blink_rate:.0f} por minuto")
+        duration = state.blink_duration_ms
+        self.duration_value.configure(text=f"{duration:.0f}")
+        if duration <= 0:
+            duration_note, duration_color = "Sin datos", MUTED_SOFT
+        elif 100 <= duration <= 300:
+            duration_note, duration_color = "Parpadeo normal", "#5eb68d"
+        else:
+            duration_note, duration_color = "Revisar duración", "#dd8141"
+        self.duration_subtitle.configure(text=duration_note, fg=duration_color)
+        self.long_closures_value.configure(text=str(state.long_closures))
+        self.long_closures_subtitle.configure(
+            text="En esta sesión",
+            fg="#5eb68d" if state.long_closures < long_limit else "#c96e5b",
+        )
+        self.perclos_value.configure(text=f"{state.perclos * 100:.1f}")
+        self.perclos_subtitle.configure(
+            text="Rango saludable" if state.perclos < perclos_high else "Nivel alto",
+            fg="#5eb68d" if state.perclos < perclos_high else "#c96e5b",
+        )

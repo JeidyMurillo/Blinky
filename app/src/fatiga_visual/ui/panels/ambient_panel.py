@@ -9,6 +9,7 @@ Uso en Estadísticas y Recomendaciones para contexto del entorno.
 
 import customtkinter as ctk
 
+from fatiga_visual.core.config import DEFAULTS
 from fatiga_visual.ui.theme import (
     MUTED_SOFT,
     TEXT_STRONG,
@@ -68,3 +69,104 @@ class AmbientPanel(ctk.CTkFrame):
         self.lux.configure(text=f"{ambient.lux:.0f}")
         self.humidity.configure(text=f"{ambient.humidity:.0f}")
         self.status.configure(text="Conectado", fg="#39a977")
+
+
+class AmbientStrip(ctk.CTkFrame):
+    """Franja sensor-strip bajo la cámara: temperatura, humedad e iluminación."""
+
+    def __init__(self, master, settings=None):
+        super().__init__(master, fg_color="#ffffff", corner_radius=0, height=76)
+        self.settings = settings
+        self.pack_propagate(False)
+        self.grid_propagate(False)
+        for column in range(3):
+            self.grid_columnconfigure(column, weight=1)
+
+        ctk.CTkFrame(self, fg_color="#edf0f5", height=1).place(
+            relx=0, rely=0, relwidth=1
+        )
+
+        self.temperature, self.temperature_note = self._item(
+            0, "thermo", "#dd8141", "#fff0e4", "TEMPERATURA", "°C"
+        )
+        self.humidity, self.humidity_note = self._item(
+            1, "droplet", "#3b9d72", "#e7f7ef", "HUMEDAD", "%"
+        )
+        self.lux, self.lux_note = self._item(
+            2, "sun", "#cb9821", "#fff7d9", "ILUMINACIÓN", "lux"
+        )
+
+    def _item(self, column, icon, icon_color, icon_bg, title, unit):
+        item = ctk.CTkFrame(self, fg_color="#ffffff")
+        item.grid(row=0, column=column, sticky="nsew")
+        item.grid_propagate(False)
+        if column:
+            ctk.CTkFrame(item, fg_color="#edf0f5", width=1).place(
+                relx=0, rely=0.2, relheight=0.6
+            )
+
+        inner = ctk.CTkFrame(item, fg_color="transparent")
+        inner.place(relx=0.5, rely=0.5, anchor="center")
+
+        tile = ctk.CTkFrame(inner, width=30, height=30, fg_color=icon_bg, corner_radius=8)
+        tile.pack(side="left", padx=(0, 9))
+        tile.pack_propagate(False)
+        ctk.CTkLabel(
+            tile, text="", image=icon_image(icon, 16, icon_color, 1.8), fg_color=icon_bg
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
+        text = ctk.CTkFrame(inner, fg_color="transparent")
+        text.pack(side="left")
+        label(text, title, 7, "#9ba2b3").pack(anchor="w")
+        value_row = ctk.CTkFrame(text, fg_color="transparent")
+        value_row.pack(anchor="w", pady=(2, 0))
+        value = label(value_row, "--", 15, TEXT_STRONG, True)
+        value.pack(side="left")
+        label(value_row, unit, 9, TEXT_STRONG).pack(side="left", padx=(2, 0), pady=(5, 0))
+        note = label(text, "Sin datos", 7, "#c96e5b")
+        note.pack(anchor="w", pady=(2, 0))
+        return value, note
+
+    def _threshold(self, name):
+        defaults = DEFAULTS["thresholds"]
+        if self.settings is None:
+            return defaults[name], defaults[f"{name.split('_')[0]}_max"]
+        return (
+            self.settings.get(f"thresholds.{name}", defaults[name]),
+            self.settings.get(
+                f"thresholds.{name.split('_')[0]}_max", defaults[f"{name.split('_')[0]}_max"]
+            ),
+        )
+
+    def refresh(self, ambient):
+        """Muestra los tres valores o '--' si el nodo no tiene lectura válida."""
+        connected = ambient is not None and getattr(ambient, "connected", False)
+        if not connected:
+            for value, note in (
+                (self.temperature, self.temperature_note),
+                (self.humidity, self.humidity_note),
+                (self.lux, self.lux_note),
+            ):
+                value.configure(text="--", fg="#c96e5b")
+                note.configure(text="Sin datos", fg="#c96e5b")
+            return
+
+        temp_min, temp_max = self._threshold("temperature_min")
+        hum_min, hum_max = self._threshold("humidity_min")
+        lux_min, lux_max = self._threshold("lux_min")
+
+        self.temperature.configure(text=f"{ambient.temperature_c:.1f}", fg=TEXT_STRONG)
+        self.temperature_note.configure(
+            text="Óptima" if temp_min <= ambient.temperature_c <= temp_max else "Fuera de rango",
+            fg="#5eb68d" if temp_min <= ambient.temperature_c <= temp_max else "#dd8141",
+        )
+        self.humidity.configure(text=f"{ambient.humidity:.0f}", fg=TEXT_STRONG)
+        self.humidity_note.configure(
+            text="Confortable" if hum_min <= ambient.humidity <= hum_max else "Fuera de rango",
+            fg="#5eb68d" if hum_min <= ambient.humidity <= hum_max else "#dd8141",
+        )
+        self.lux.configure(text=f"{ambient.lux:.0f}", fg=TEXT_STRONG)
+        self.lux_note.configure(
+            text="Adecuada" if lux_min <= ambient.lux <= lux_max else "Fuera de rango",
+            fg="#5eb68d" if lux_min <= ambient.lux <= lux_max else "#dd8141",
+        )
