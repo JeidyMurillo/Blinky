@@ -2,7 +2,7 @@
 
 Qué va aquí:
 - Tarjeta de estado ocular (ojo izquierdo/derecho).
-- Tarjetas de parpadeos, temperatura, iluminación y tiempo activo.
+- Tarjetas de parpadeos y tiempo activo; el entorno vive en AmbientPanel.
 - Botón grande que navega a la vista de Estadísticas.
 
 Se refresca con refresh(state) sin conocer la cámara ni MQTT.
@@ -159,14 +159,8 @@ class BlinkPanel(ctk.CTkFrame):
         _, self.blink_value, _, self.blink_subtitle = self._metric(
             metrics_grid, 0, 0, "eye", "#675cdd", "#eeecff", "PARPADEOS", "0", None, "0 por minuto"
         )
-        _, self.temp_value, _, self.temp_subtitle = self._metric(
-            metrics_grid, 0, 1, "thermo", "#dd8141", "#fff0e4", "TEMPERATURA", "23.4", "C", "Optima"
-        )
-        _, self.light_value, _, self.light_subtitle = self._metric(
-            metrics_grid, 1, 0, "sun", "#cb9821", "#fff7d9", "ILUMINACION", "420", "lux", "Adecuada"
-        )
         _, self.timer_value, _, _ = self._metric(
-            metrics_grid, 1, 1, "clock", "#4786d4", "#e9f3ff", "TIEMPO ACTIVO", "00:00:00", None, "Sesion actual", 14
+            metrics_grid, 0, 1, "clock", "#4786d4", "#e9f3ff", "TIEMPO ACTIVO", "00:00:00", None, "Sesion actual", 14
         )
         self.detail_label = label(metrics, "Deteccion pendiente", 9, MUTED_SOFT)
         self.detail_label.pack(anchor="w", padx=17, pady=(0, 14))
@@ -208,7 +202,7 @@ class BlinkPanel(ctk.CTkFrame):
             column=column,
             sticky="nsew",
             padx=(0, 5) if column == 0 else (5, 0),
-            pady=(0, 10) if row == 0 else (0, 0),
+            pady=0,
         )
         card.pack_propagate(False)
         inner = ctk.CTkFrame(card, fg_color="transparent")
@@ -235,8 +229,6 @@ class BlinkPanel(ctk.CTkFrame):
     def refresh(self, state):
         self.blink_value.configure(text=str(state.blinks))
         self.blink_subtitle.configure(text=f"{state.blink_rate:.0f} por minuto")
-        self.temp_value.configure(text=f"{state.ambient.temperature_c:.1f}")
-        self.light_value.configure(text=f"{state.ambient.lux:.0f}")
         self.timer_value.configure(text=format_clock(state.session_seconds))
         image = self.eye_closed_image if state.eyes_closed else self.eye_open_image
         eye_text = "Cerrado" if state.eyes_closed else "Abierto"

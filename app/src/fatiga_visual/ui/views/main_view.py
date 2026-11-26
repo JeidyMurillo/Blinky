@@ -10,6 +10,7 @@ controla MainWindow mediante AppState.
 
 import customtkinter as ctk
 
+from fatiga_visual.ui.panels.ambient_panel import AmbientPanel
 from fatiga_visual.ui.panels.blink_panel import BlinkPanel
 from fatiga_visual.ui.theme import (
     ALERT_BG,
@@ -75,8 +76,12 @@ class MainView(ctk.CTkFrame):
         grid.grid_rowconfigure(0, weight=1)
 
         self._build_camera_card(grid)
-        self.panel = BlinkPanel(grid, on_stats)
-        self.panel.grid(row=0, column=1, sticky="nsew")
+        right = ctk.CTkFrame(grid, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="nsew")
+        self.panel = BlinkPanel(right, on_stats)
+        self.panel.pack(fill="x")
+        self.ambient_panel = AmbientPanel(right)
+        self.ambient_panel.pack(fill="x", pady=(14, 0))
         self._build_alert(main)
         self._build_footer(main)
         self.refresh()
@@ -299,6 +304,13 @@ class MainView(ctk.CTkFrame):
             self.pause_button.configure(text="Reanudar monitoreo", image=self.play_image)
 
         self.panel.refresh(state)
+
+        ambient = getattr(state, "ambient", None)
+        self.ambient_panel.refresh(ambient)
+        connected = bool(getattr(ambient, "connected", False))
+        self.sensor_values["Sensor ambiental"].configure(
+            text=" Conectado" if connected else " Sin datos"
+        )
 
         primary = state.primary_recommendation()
         if primary is None or state.alert_dismissed:
