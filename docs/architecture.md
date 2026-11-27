@@ -16,6 +16,7 @@ flowchart LR
     BUS --> UI[ui]
     BUS --> ST[storage]
     ST --> DB[(SQLite)]
+    ST -->|"daily_blinks / session_history"| UI
 ```
 
 La fuente de datos se elige en `runtime.source`:
@@ -78,7 +79,10 @@ los encola y `MainWindow` los consume en el hilo de Tk cada 100 ms.
 - Vistas `v_daily_blinks` y `v_daily_ambient` para estadísticas.
 
 `storage/repository.py` es la única puerta de entrada: guarda eventos y
-devuelve series listas para la UI o para exportar informes.
+devuelve series listas para la UI o para exportar informes. `daily_blinks()`
+alimenta el gráfico de la pestaña Estadísticas; `session_history()` lista la
+sesión actual y las anteriores con parpadeos, pausas y alertas por sesión, sin
+que la UI escriba SQL.
 
 ## Contrato MQTT
 
