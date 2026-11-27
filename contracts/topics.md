@@ -124,6 +124,7 @@ publicarse ni suscribirse en Mosquitto.
 | `ambient.reading` | `ambient/mqtt_client.py` | UI, decisión, storage | `AmbientReading` ya validado |
 | `ambient.status` | `ambient/mqtt_client.py` | UI | Nodo online/offline o datos vencidos |
 | `decision.recommendation` | `decision/engine.py` | UI, storage | Recomendación y su motivo |
+| `decision.recommendation.resolved` | `decision/engine.py` | UI | `RecommendationResolved` con id y hora al normalizarse la condición |
 
 Regla: si un dato debe cruzar de un proceso o equipo a otro, va por MQTT y se
 documenta en la sección 1. Si solo circula dentro de la app, va por `EventBus`

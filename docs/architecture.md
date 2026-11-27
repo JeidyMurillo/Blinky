@@ -54,6 +54,8 @@ La fuente de datos se elige en `runtime.source`:
 - `ambient.reading`: `AmbientReading` validado por MQTT o simulación.
 - `ambient.status`: `"online"` / `"offline"` del LWT.
 - `decision.recommendation`: `Recommendation` emitida por el motor.
+- `decision.recommendation.resolved`: `RecommendationResolved` cuando una
+  condición deja de cumplirse; el panel retira esa alerta automáticamente.
 - `tick`, `monitoring`, `camera`: eventos internos de la UI.
 
 ### Reglas ambientales

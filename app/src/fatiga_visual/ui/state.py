@@ -54,6 +54,7 @@ class AppState:
         self.running = True
         self.camera_on = False
         self.alert_dismissed = False
+        self.dismissed_ids = set()
 
         self.ambient = AmbientReading(
             timestamp=datetime.now(),
@@ -131,6 +132,7 @@ class AppState:
             bus.subscribe("vision.status", self.update_vision_status)
             bus.subscribe("vision.landmarks", self.update_face_overlay)
             bus.subscribe("decision.recommendation", self.add_recommendation)
+            bus.subscribe("decision.recommendation.resolved", self.resolve_recommendation)
 
     @property
     def continuous_seconds(self):
@@ -233,14 +235,23 @@ class AppState:
         self.alert_dismissed = dismissed
         self.emit("recommendations")
 
-    def primary_recommendation(self):
-        if not self.recommendations:
-            return None
+    def ordered_recommendations(self):
         priority = {"high": 0, "medium": 1, "low": 2}
         return sorted(
             self.recommendations,
             key=lambda item: (priority.get(item.severity, 3), item.created_at),
-        )[0]
+        )
+
+    def visible_recommendations(self):
+        return [
+            item
+            for item in self.ordered_recommendations()
+            if item.id not in self.dismissed_ids
+        ]
+
+    def primary_recommendation(self):
+        visible = self.visible_recommendations()
+        return visible[0] if visible else None
 
     def blink_rate_status(self, threshold):
         """Estado de la tasa frente al umbral; sin datos no es 'Normal'."""
@@ -277,16 +288,46 @@ class AppState:
 
     def complete_recommendation(self, recommendation_id):
         self.recommendations = [item for item in self.recommendations if item.id != recommendation_id]
+        self.dismissed_ids.discard(recommendation_id)
         self.alert_dismissed = False
+        self.emit("recommendations")
+
+    def dismiss_recommendation(self, recommendation_id):
+        self.dismissed_ids.add(recommendation_id)
+        self.alert_dismissed = True
+        self.emit("recommendations")
+
+    def resolve_recommendation(self, resolved):
+        recommendation_id = getattr(resolved, "id", resolved)
+        if recommendation_id is None:
+            return
+        before = len(self.recommendations)
+        self.recommendations = [
+            item for item in self.recommendations if item.id != recommendation_id
+        ]
+        self.dismissed_ids.discard(recommendation_id)
+        if len(self.recommendations) == before:
+            return
+        if not self.recommendations:
+            self.alert_dismissed = False
         self.emit("recommendations")
 
     def add_recommendation(self, recommendation):
         if recommendation is None:
             return
-        if all(item.id != recommendation.id for item in self.recommendations):
+        existing = next(
+            (item for item in self.recommendations if item.id == recommendation.id),
+            None,
+        )
+        if existing is not None:
+            if existing == recommendation:
+                return
+            self.recommendations[self.recommendations.index(existing)] = recommendation
+        else:
             self.recommendations.append(recommendation)
-            self.alert_dismissed = False
-            self.emit("recommendations")
+        self.dismissed_ids.discard(recommendation.id)
+        self.alert_dismissed = False
+        self.emit("recommendations")
 
     def update_blink_metrics(self, metrics):
         if metrics is None:
