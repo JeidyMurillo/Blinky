@@ -95,7 +95,8 @@ ESP32  -> MQTT   -> AmbientReading -----/          |
 - `runtime/` conecta cámara, visión, exposición y motor. La UI solo consume.
 - `ui/state.py` concentra el estado de las tres vistas y encola los eventos;
   `MainWindow` los consume en el hilo de Tk cada 100 ms.
-- `storage/` guarda muestras y expone series diarias para estadísticas.
+- `storage/` guarda muestras y expone series diarias. La vista Estadísticas
+  recibe el repositorio desde `MainWindow` y consulta SQLite al abrir la pestaña.
 
 ## Fuente de datos
 
@@ -328,6 +329,9 @@ python tools\mqtt_latency_test.py --topic fatiga/test --count 20
 `storage/database.py` crea `app/blinky.db` con las tablas `sessions`,
 `blink_samples`, `ambient_samples`, `exposure_samples` y `recommendations`.
 Incluye dos vistas para informes: `v_daily_blinks` y `v_daily_ambient`.
+`storage/repository.py` expone `daily_blinks()`, `session_summary()`,
+`session_history()` y `session_alert_count()`; la pestaña Estadísticas usa esas
+consultas para mostrar la sesión actual, las anteriores y sus alertas.
 Se puede desactivar o cambiar la ruta con:
 
 ```yaml

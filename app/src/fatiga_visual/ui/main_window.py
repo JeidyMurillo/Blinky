@@ -41,9 +41,10 @@ SWP_FRAMECHANGED = 0x0020
 
 
 class MainWindow(ctk.CTk):
-    def __init__(self, state: AppState):
+    def __init__(self, state: AppState, repository=None):
         super().__init__(fg_color=BG)
         self.app_state = state
+        self.repository = repository
         self.title("Blinky")
         self.overrideredirect(True)
         self.resizable(False, False)
@@ -149,7 +150,7 @@ class MainWindow(ctk.CTk):
                 on_recommendations=lambda: self.show("recommendations"),
             )
         if key == "stats":
-            return StatsView(self._content, self.app_state)
+            return StatsView(self._content, self.app_state, repository=self.repository)
         return RecommendationsView(self._content, self.app_state)
 
     def show(self, key):
