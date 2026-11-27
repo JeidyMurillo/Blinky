@@ -6,6 +6,7 @@ Qué va aquí:
 - Evitar repetir la misma alerta antes del cooldown configurado.
 - Emitir la regla 20-20-20 una sola vez hasta que haya una pausa válida.
 - Publicar "decision.recommendation" en el EventBus.
+- Publicar "decision.recommendation.resolved" al desaparecer la condición.
 
 Uso:
     engine = DecisionEngine(settings, bus)
@@ -19,7 +20,11 @@ valor en pruebas; si se omite, se toma de la configuración.
 from datetime import datetime, timedelta
 
 from fatiga_visual.core.config import DEFAULTS
+from fatiga_visual.core.models import RecommendationResolved
 from fatiga_visual.decision import rules
+
+
+_RESOLUTION_MISSES = 2
 
 
 def _thresholds(settings):
@@ -41,6 +46,8 @@ class DecisionEngine:
         )
         self.cooldown = timedelta(seconds=float(seconds))
         self._last_emitted = {}
+        self._active = {}
+        self._misses = {}
         self._low_blink_rate = rules.SustainedLowBlinkRate()
         self._twenty_twenty = rules.TwentyTwentyTwenty()
 
@@ -59,6 +66,7 @@ class DecisionEngine:
         thresholds = _thresholds(self.settings)
         now = now or datetime.now()
         results = []
+        fired = set()
         for rule in self._rules():
             if rule is self._low_blink_rate:
                 recommendation = rule(blink, exposure, ambient, thresholds, now=now)
@@ -66,11 +74,29 @@ class DecisionEngine:
                 recommendation = rule(blink, exposure, ambient, thresholds)
             if recommendation is None:
                 continue
+            fired.add(recommendation.id)
+            self._misses[recommendation.id] = 0
             previous = self._last_emitted.get(recommendation.id)
             if previous is not None and now - previous < self.cooldown:
                 continue
             self._last_emitted[recommendation.id] = now
+            self._active[recommendation.id] = recommendation
             results.append(recommendation)
             if self.bus is not None:
                 self.bus.publish("decision.recommendation", recommendation)
+        for recommendation_id in list(self._active):
+            if recommendation_id in fired:
+                continue
+            misses = self._misses.get(recommendation_id, 0) + 1
+            self._misses[recommendation_id] = misses
+            if misses < _RESOLUTION_MISSES:
+                continue
+            self._active.pop(recommendation_id, None)
+            self._misses.pop(recommendation_id, None)
+            self._last_emitted.pop(recommendation_id, None)
+            if self.bus is not None:
+                self.bus.publish(
+                    "decision.recommendation.resolved",
+                    RecommendationResolved(id=recommendation_id, resolved_at=now),
+                )
         return results

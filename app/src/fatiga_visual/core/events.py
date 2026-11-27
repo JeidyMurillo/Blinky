@@ -3,7 +3,7 @@
 Qué va aquí:
 - Comunicación desacoplada entre visión, exposición, ambiente, decisión y UI.
 - Temas sugeridos: "blink.metrics", "exposure.metrics", "ambient.reading",
-  "decision.recommendation", "ui.navigate".
+  "decision.recommendation", "decision.recommendation.resolved", "ui.navigate".
 
 No usar para datos de alta frecuencia (frames): para eso se usa el último
 fotograma compartido de vision.camera.

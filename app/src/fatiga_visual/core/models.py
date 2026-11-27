@@ -101,6 +101,14 @@ class Recommendation:
 
 
 @dataclass(frozen=True)
+class RecommendationResolved:
+    """Alerta retirada por el motor cuando la condición desaparece."""
+
+    id: str
+    resolved_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass(frozen=True)
 class VisionFrame:
     """Fotograma + landmarks listos para el detector de parpadeo.
 
