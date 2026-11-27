@@ -17,6 +17,28 @@ def _iso(value):
     return str(value)
 
 
+_SESSION_AGGREGATES = """
+    (SELECT COUNT(*) FROM blink_samples b WHERE b.session_id = s.id)
+        AS blink_samples,
+    (SELECT MAX(b.blinks) FROM blink_samples b WHERE b.session_id = s.id)
+        AS blinks,
+    (SELECT ROUND(AVG(b.blink_rate), 1) FROM blink_samples b
+        WHERE b.session_id = s.id) AS avg_blink_rate,
+    (SELECT ROUND(AVG(b.mean_blink_duration_ms), 0) FROM blink_samples b
+        WHERE b.session_id = s.id) AS avg_blink_duration_ms,
+    (SELECT ROUND(AVG(b.perclos), 3) FROM blink_samples b
+        WHERE b.session_id = s.id) AS avg_perclos,
+    (SELECT MAX(b.long_closures) FROM blink_samples b
+        WHERE b.session_id = s.id) AS long_closures,
+    (SELECT MAX(e.session_seconds) FROM exposure_samples e
+        WHERE e.session_id = s.id) AS exposure_seconds,
+    (SELECT MAX(e.continuous_seconds) FROM exposure_samples e
+        WHERE e.session_id = s.id) AS max_continuous_seconds,
+    (SELECT MAX(e.breaks_taken) FROM exposure_samples e
+        WHERE e.session_id = s.id) AS breaks_taken
+"""
+
+
 class Repository:
     def __init__(self, database=None, path=None):
         self.db = database if database is not None else Database(path)
@@ -196,30 +218,49 @@ class Repository:
         if target is None:
             return None
         return self.db.query_one(
-            """
+            f"""
             SELECT
                 s.id,
                 s.started_at,
                 s.ended_at,
                 s.source,
-                (SELECT COUNT(*) FROM blink_samples b WHERE b.session_id = s.id)
-                    AS blink_samples,
-                (SELECT MAX(b.blinks) FROM blink_samples b WHERE b.session_id = s.id)
-                    AS blinks,
-                (SELECT ROUND(AVG(b.blink_rate), 1) FROM blink_samples b
-                    WHERE b.session_id = s.id) AS avg_blink_rate,
-                (SELECT ROUND(AVG(b.mean_blink_duration_ms), 0) FROM blink_samples b
-                    WHERE b.session_id = s.id) AS avg_blink_duration_ms,
-                (SELECT ROUND(AVG(b.perclos), 3) FROM blink_samples b
-                    WHERE b.session_id = s.id) AS avg_perclos,
-                (SELECT MAX(b.long_closures) FROM blink_samples b
-                    WHERE b.session_id = s.id) AS long_closures,
-                (SELECT MAX(e.breaks_taken) FROM exposure_samples e
-                    WHERE e.session_id = s.id) AS breaks_taken
+                {_SESSION_AGGREGATES}
             FROM sessions s
             WHERE s.id = ?
             """,
             (target,),
+        )
+
+    def session_history(self, limit=20):
+        rows = self.db.query(
+            f"""
+            SELECT
+                s.id,
+                s.started_at,
+                s.ended_at,
+                s.source,
+                {_SESSION_AGGREGATES},
+                (SELECT COUNT(*) FROM recommendations r
+                    WHERE r.session_id = s.id) AS alerts
+            FROM sessions s
+            ORDER BY s.started_at DESC, s.id DESC
+            LIMIT ?
+            """,
+            (int(limit),),
+        )
+        for row in rows:
+            row["current"] = row["id"] == self._session_id
+        return rows
+
+    def session_alert_count(self, session_id=None):
+        target = self._sid(session_id)
+        if target is None:
+            return 0
+        return (
+            self.db.scalar(
+                "SELECT COUNT(*) FROM recommendations WHERE session_id = ?", (target,)
+            )
+            or 0
         )
 
     def latest_recommendations(self, limit=20):
