@@ -163,7 +163,7 @@ def main():
     mqtt_client = _start_mqtt(settings, bus)
     runtime = _start_runtime(settings, bus, state, ambient_state, camera, mqtt_client)
 
-    window = MainWindow(state)
+    window = MainWindow(state, repository=repository)
     try:
         window.mainloop()
     finally:
