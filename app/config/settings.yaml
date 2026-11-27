@@ -65,6 +65,7 @@ thresholds:
   blink_low_min_samples: 3     # muestras mínimas dentro de la ventana para confirmar la baja tasa (SCRUM-29).
   blink_low_max_gap_seconds: 60 # si transcurre más tiempo sin muestras, se reinicia la ventana (SCRUM-29).
   perclos_high: 0.15           # 15% del tiempo con ojos cerrados en 60 s; referencia habitual de fatiga en estudios PERCLOS.
+  perclos_min_observation_seconds: 60 # s mínimos observados antes de avisar por PERCLOS; el denominador crece desde 0 y en sesiones cortas un solo cierre parecía fatiga.
   long_closures_per_minute: 3  # cierres >1.5 s por minuto (ver vision.long_closure_seconds): 3 o más sugiere microsueño.
   continuous_minutes: 20       # regla 20-20-20 de la American Academy of Ophthalmology: pausa cada 20 min.
   cooldown_seconds: 300        # 5 min sin repetir la misma alerta; antes estaba fijo en DecisionEngine y generaba avisos redundantes.

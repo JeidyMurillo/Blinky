@@ -1,7 +1,7 @@
 """Vista de la camara en vivo.
 
 Qué va aquí:
-- Presentar el feed 880x480 con overlay y estados off/connecting/on/error.
+- Presentar el feed 880x360 con overlay y estados off/connecting/on/error.
 - Consultar vision.camera.CameraStream desde el hilo de Tk con after().
 - Dibujar los landmarks que el pipeline publica en AppState.face_overlay; si no
   hay rostro, mostrar una guía genérica.
@@ -11,6 +11,7 @@ No abrir cv2 aquí: toda la captura pertenece a vision.camera.
 """
 
 import math
+from datetime import datetime
 
 import customtkinter as ctk
 from PIL import Image, ImageDraw
@@ -119,7 +120,7 @@ class CameraWidget(ctk.CTkFrame):
             )
             od.text(
                 (cx, cy + height * 0.32 + 20),
-                "Rostro detectado",
+                "Colocate frente a la camara",
                 font=pil_font(9, True),
                 fill=(107, 229, 182, 235),
                 anchor="mm",
@@ -208,7 +209,7 @@ class CameraWidget(ctk.CTkFrame):
         return overlay
 
     def _draw_face_guide(self, draw):
-        """Guía genérica cuando no hay landmarks (fuente simulada o sin rostro)."""
+        """Guía cuando no hay landmarks: NO debe afirmar que hay rostro."""
         cx, cy = FEED_W / 2, FEED_H / 2
         draw.ellipse(
             [
@@ -222,9 +223,9 @@ class CameraWidget(ctk.CTkFrame):
         )
         draw.text(
             (cx, cy + FEED_H * 0.32 + 20),
-            "Rostro detectado",
+            "Colocate frente a la camara",
             font=pil_font(9, True),
-            fill=(122, 240, 194, 240),
+            fill=(160, 220, 195, 225),
             anchor="mm",
         )
 
@@ -335,13 +336,22 @@ class CameraWidget(ctk.CTkFrame):
         if callback is not None:
             callback(ok, message)
 
+    def _fresh_overlay(self):
+        """Solo dibuja landmarks recientes: un dato viejo no es un rostro."""
+        overlay = getattr(self.state, "face_overlay", None) if self.state else None
+        if overlay is None or not getattr(overlay, "visible", False):
+            return None
+        timestamp = getattr(overlay, "timestamp", None)
+        if timestamp is not None and (datetime.now() - timestamp).total_seconds() > 0.5:
+            return None
+        return overlay
+
     def _render_tick(self):
         self._render_job = None
         seq, rgb, fps = self.stream.read_frame()
         if rgb is not None and seq != self._last_seq:
             self._last_seq = seq
-            overlay = getattr(self.state, "face_overlay", None) if self.state else None
-            frame = self._compose_live(rgb, fps, overlay)
+            frame = self._compose_live(rgb, fps, self._fresh_overlay())
             self.live_image.configure(light_image=frame, dark_image=frame)
         if self.stream.state() == CameraStream.ERROR:
             if not self._dead_reported:

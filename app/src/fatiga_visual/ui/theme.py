@@ -63,9 +63,13 @@ PAD = 56
 GAP = 20
 LEFT_W = round((WINDOW_W - PAD * 2 - GAP) * 158 / 238)
 FEED_W = LEFT_W - 36
-FEED_H = 445
+FEED_H = 500
 
-UI_SCALE = 1.45
+# Medidas base del diseño Figma. La geometría crece solo un poco para no salir
+# de la ventana fija; la tipografía tiene un refuerzo adicional porque los
+# subtítulos de 7-10 px del diseño se leían demasiado pequeños.
+UI_SCALE = 1.28
+FONT_SCALE = 1.12
 
 PIL_FONT_CACHE = {}
 ICON_CACHE = {}
@@ -75,12 +79,16 @@ def sp(px):
     return max(1, int(round(px * UI_SCALE)))
 
 
+def font_px(px):
+    return max(1, int(round(px * UI_SCALE * FONT_SCALE)))
+
+
 def fnt(px, bold=False):
-    return (FONT, -sp(px), "bold" if bold else "normal")
+    return (FONT, -font_px(px), "bold" if bold else "normal")
 
 
 def pil_font(px, bold=False):
-    size = sp(px)
+    size = font_px(px)
     key = (size, bold)
     if key not in PIL_FONT_CACHE:
         try:
@@ -141,6 +149,18 @@ def render_icon(name, px, color, stroke=1.8):
         rrect([9.3, 2.8, 14.7, 16], 2.7)
         ellipse([8.5, 14.2, 15.5, 21.2])
         line([(12, 7.2), (12, 16)])
+    elif name == "droplet":
+        line(
+            [(12, 3), (8.4, 8.2), (6.3, 11.2), (6.3, 14.4), (8.2, 18),
+             (12, 20.6), (15.8, 18), (17.7, 14.4), (17.7, 11.2),
+             (15.6, 8.2), (12, 3)]
+        )
+        line([(9.2, 15.3), (9.2, 16.8), (10.4, 18.2)])
+    elif name == "gauge":
+        line([(4.2, 17.8), (5.6, 13.5), (8.8, 9.2), (12, 7.6),
+              (15.2, 9.2), (18.4, 13.5), (19.8, 17.8)])
+        line([(12, 7.6), (12, 14.2), (16.4, 16.4)])
+        ellipse([10.6, 12.8, 13.4, 15.6])
     elif name == "clock":
         ellipse([3, 3, 21, 21])
         line([(12, 7), (12, 12), (15.5, 14)])

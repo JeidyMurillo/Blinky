@@ -79,14 +79,24 @@ class SustainedLowBlinkRate:
         return elapsed > 0 and elapsed >= warmup
 
 
+def perclos_ready(blink, thresholds):
+    """PERCLOS necesita una ventana completa: antes el denominador es pequeño."""
+    elapsed = getattr(blink, "elapsed_seconds", 0.0) or 0.0
+    return elapsed >= float(thresholds["perclos_min_observation_seconds"])
+
+
 def prolonged_eye_closure(blink, exposure, ambient, thresholds):
     if blink is None or not _reliable(blink, thresholds):
         return None
     perclos_limit = thresholds["perclos_high"]
     long_limit = thresholds["long_closures_per_minute"]
-    if blink.perclos >= perclos_limit or blink.long_closures >= long_limit:
+    if blink.long_closures >= long_limit:
         return recommendations.prolonged_eye_closure(
-            blink.perclos, blink.long_closures
+            blink.perclos, blink.long_closures, long_limit
+        )
+    if blink.perclos >= perclos_limit and perclos_ready(blink, thresholds):
+        return recommendations.prolonged_eye_closure(
+            blink.perclos, blink.long_closures, long_limit
         )
     return None
 

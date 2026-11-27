@@ -83,6 +83,23 @@ class AppStateTests(unittest.TestCase):
         self.state.update_ambient(reading)
         self.assertEqual(self.state.ambient.lux, 500)
 
+    def test_blink_rate_status_uses_threshold(self):
+        self.assertEqual(self.state.blink_rate_status(15), "Sin datos")
+        self.state.blink_rate = 12.0
+        self.state.blink_elapsed_seconds = 20.0
+        self.assertEqual(self.state.blink_rate_status(15), "Baja")
+        self.state.blink_rate = 18.0
+        self.assertEqual(self.state.blink_rate_status(15), "Normal")
+
+    def test_blink_rate_trend(self):
+        self.assertEqual(self.state.blink_rate_trend(), 0)
+        self.state.blink_rate_history = [14.0, 14.0, 20.0]
+        self.assertEqual(self.state.blink_rate_trend(), 1)
+        self.state.blink_rate_history = [20.0, 20.0, 14.0]
+        self.assertEqual(self.state.blink_rate_trend(), -1)
+        self.state.blink_rate_history = [15.0, 15.0, 15.5]
+        self.assertEqual(self.state.blink_rate_trend(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

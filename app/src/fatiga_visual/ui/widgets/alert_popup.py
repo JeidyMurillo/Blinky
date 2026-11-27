@@ -16,40 +16,40 @@ class AlertBanner(ctk.CTkFrame):
         self.on_action = on_action
         self.on_close = on_close
 
-        icon = ctk.CTkFrame(self, width=36, height=36, fg_color="#f7e6c8", corner_radius=9)
+        icon = ctk.CTkFrame(self, width=38, height=38, fg_color="#f7e6c8", corner_radius=9)
         icon.pack(side="left", padx=(12, 10), pady=11)
         icon.pack_propagate(False)
-        ctk.CTkLabel(icon, text="!", font=fnt(15, True), text_color="#b37a25").place(
+        ctk.CTkLabel(icon, text="!", font=fnt(16, True), text_color="#b37a25").place(
             relx=0.5, rely=0.5, anchor="center"
         )
 
         text = ctk.CTkFrame(self, fg_color="transparent")
         text.pack(side="left", pady=8)
-        self.title_label = label(text, "", 11, "#7c5a1f", True, bg="#fff7ec")
+        self.title_label = label(text, "", 12, "#7c5a1f", True, bg="#fff7ec")
         self.title_label.pack(anchor="w")
-        self.message_label = label(text, "", 9, "#9a8259", bg="#fff7ec")
+        self.message_label = label(text, "", 10, "#9a8259", bg="#fff7ec")
         self.message_label.pack(anchor="w", pady=(2, 0))
 
         self.action_button = ctk.CTkButton(
             self,
             text="Ver recomendaciones",
             command=self._action,
-            height=32,
-            width=160,
+            height=34,
+            width=168,
             corner_radius=7,
             fg_color="#ffffff",
             hover_color="#fdf3e3",
             border_width=1,
             border_color="#ecd9b6",
             text_color="#8a641f",
-            font=fnt(9, True),
+            font=fnt(10, True),
         )
         self.action_button.pack(side="right", padx=(6, 0), pady=11)
 
         self.close_button = ctk.CTkButton(
             self,
             text="",
-            image=icon_image("close", 14, "#a98b55", 1.8),
+            image=icon_image("close", 15, "#a98b55", 1.8),
             command=self._close,
             height=30,
             width=30,

@@ -20,6 +20,7 @@ umbral numérico fijo**: todos reciben el mapping devuelto por
 | `blink_rate_low` | `15` bpm | Frecuencia normal frente a pantalla ≈15–20 bpm. Sustituye el `10` del primer prototipo, que avisaba demasiado tarde. |
 | `blink_warmup_seconds` | `20` s | Gracia al arrancar: `BlinkMetrics` necesita 10 s de ventana mínima y los primeros valores son inestables. |
 | `perclos_high` | `0.15` | 15 % del tiempo con ojos cerrados en la ventana de 60 s; referencia habitual de fatiga en estudios PERCLOS. |
+| `perclos_min_observation_seconds` | `60` | Tiempo mínimo observado antes de avisar por PERCLOS. El denominador crece desde 0, así que en sesiones cortas un solo cierre parecía fatiga; los cierres largos sí pueden avisar antes. |
 | `long_closures_per_minute` | `3` | Cierres de >1,5 s por minuto (ver `vision.long_closure_seconds`); 3 o más sugiere microsueño. |
 | `continuous_minutes` | `20` min | Regla 20-20-20 de la American Academy of Ophthalmology. La alerta se emite una vez por periodo continuo y se rearma solo cuando `breaks_taken` aumenta (pausa válida). |
 | `cooldown_seconds` | `300` s | 5 min sin repetir la misma recomendación. Antes era un literal en `DecisionEngine` y generaba avisos redundantes. |
@@ -38,7 +39,7 @@ umbral numérico fijo**: todos reciben el mapping devuelto por
 | `decision/engine.py` | `cooldown_seconds` + pasa el mapping completo a las reglas |
 | `runtime/pipeline.py` | `continuous_minutes`, `min_confidence` (filtro de muestras de visión) |
 | `runtime/simulated.py` | `continuous_minutes` |
-| `ui/state.py`, `ui/panels/blink_panel.py` | `continuous_minutes`, `perclos_high`, `long_closures_per_minute` (solo presentación) |
+| `ui/state.py`, `ui/panels/blink_panel.py` | `continuous_minutes`, `perclos_high`, `perclos_min_observation_seconds`, `long_closures_per_minute` (solo presentación) |
 
 ## Alcance
 

@@ -62,6 +62,7 @@ class MainWindow(ctk.CTk):
         self._poll_job = None
         self._pending_borderless = False
 
+        self.protocol("WM_DELETE_WINDOW", self._close)
         self.bind("<Map>", self._on_map)
         self._build_bar()
         self._content = ctk.CTkFrame(self, fg_color=BG, corner_radius=0)
@@ -72,24 +73,24 @@ class MainWindow(ctk.CTk):
         self._poll_job = self.after(100, self._poll_state)
 
     def _build_bar(self):
-        bar = ctk.CTkFrame(self, fg_color="#ffffff", corner_radius=0, height=46)
+        bar = ctk.CTkFrame(self, fg_color="#ffffff", corner_radius=0, height=50)
         bar.pack(fill="x")
         bar.pack_propagate(False)
 
         brand = ctk.CTkFrame(bar, fg_color="transparent")
         brand.pack(side="left", padx=20)
 
-        mark = ctk.CTkFrame(brand, width=30, height=30, fg_color="#6357dc", corner_radius=9)
+        mark = ctk.CTkFrame(brand, width=32, height=32, fg_color="#6357dc", corner_radius=9)
         mark.pack(side="left", padx=(0, 10))
         mark.pack_propagate(False)
         ctk.CTkLabel(
-            mark, text="", image=icon_image("eye", 20, "#ffffff", 1.8), fg_color="#6357dc"
+            mark, text="", image=icon_image("eye", 21, "#ffffff", 1.8), fg_color="#6357dc"
         ).place(relx=0.5, rely=0.5, anchor="center")
 
-        label(brand, "Blinky", 14, TEXT_STRONG, True, bg="#ffffff").pack(side="left")
-        separator = ctk.CTkFrame(brand, width=1, height=16, fg_color="#dde1e9", corner_radius=0)
+        label(brand, "Blinky", 15, TEXT_STRONG, True, bg="#ffffff").pack(side="left")
+        separator = ctk.CTkFrame(brand, width=1, height=18, fg_color="#dde1e9", corner_radius=0)
         separator.pack(side="left", padx=9)
-        label(brand, "Monitor de fatiga ocular", 12, "#667087", bg="#ffffff").pack(side="left")
+        label(brand, "Monitor de fatiga ocular", 13, "#667087", bg="#ffffff").pack(side="left")
 
         nav = ctk.CTkFrame(bar, fg_color="transparent")
         nav.pack(side="left", padx=(26, 0))
@@ -98,13 +99,13 @@ class MainWindow(ctk.CTk):
                 nav,
                 text=text,
                 command=lambda selected=key: self.show(selected),
-                height=34,
-                width=118 if key != "recommendations" else 158,
+                height=38,
+                width=126 if key != "recommendations" else 168,
                 corner_radius=8,
                 fg_color="transparent",
                 hover_color="#f2f2f8",
                 text_color="#6b7385",
-                font=fnt(11, True),
+                font=fnt(12, True),
             )
             button.pack(side="left", padx=(0, 4))
             self._tab_buttons[key] = button
@@ -114,10 +115,10 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(
             controls,
             text="",
-            image=icon_image("minimize", 18, "#667087", 1.9),
+            image=icon_image("minimize", 19, "#667087", 1.9),
             command=self._minimize,
-            width=48,
-            height=46,
+            width=52,
+            height=50,
             corner_radius=0,
             fg_color="transparent",
             hover_color="#edf0f5",
@@ -125,10 +126,10 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(
             controls,
             text="",
-            image=icon_image("close", 17, "#667087", 1.9),
+            image=icon_image("close", 18, "#667087", 1.9),
             command=self._close,
-            width=48,
-            height=46,
+            width=52,
+            height=50,
             corner_radius=0,
             fg_color="transparent",
             hover_color="#e85555",
@@ -184,6 +185,8 @@ class MainWindow(ctk.CTk):
                     continue
                 seen.add(topic)
                 self._on_state(topic)
+                if topic == "blink":
+                    self.after(180, self.app_state.release_blink_visual)
         finally:
             self._poll_job = self.after(100, self._poll_state)
 
@@ -249,27 +252,32 @@ class MainWindow(ctk.CTk):
             pass
 
     def _minimize(self):
-        # Con overrideredirect(True) la ventana no tiene boton en la barra de
-        # tareas: al minimizar quedaria inaccesible. La vuelta temporal a una
-        # ventana normal le da boton propio y el <Map> de la restauracion
-        # vuelve a quitar el borde.
+        # Una ventana overrideredirect NO tiene botón en la barra de tareas:
+        # si se iconifica directamente queda inaccesible. Se vuelve normal,
+        # se le asegura entrada en la barra y entonces sí se iconifica.
+        if os.name == "nt":
+            self.overrideredirect(False)
+            self.update_idletasks()
+            self._ensure_taskbar_entry()
         self._pending_borderless = True
-        self.withdraw()
-        self.overrideredirect(False)
-        self.state("iconic")
+        self.iconify()
 
     def _on_map(self, event):
-        if self._pending_borderless and self.state() == "normal":
-            self._pending_borderless = False
+        if self._pending_borderless:
             self.after_idle(self._restore_borderless)
 
     def _restore_borderless(self):
-        if self.state() != "normal":
-            self._pending_borderless = True
+        if not self._pending_borderless:
             return
+        if self.state() != "normal":
+            self.after(100, self._restore_borderless)
+            return
+        self._pending_borderless = False
         self.overrideredirect(True)
         self.geometry(self._normal_geometry)
         self._ensure_taskbar_entry()
+        self.lift()
+        self.focus_force()
 
     def _close(self):
         self.destroy()
