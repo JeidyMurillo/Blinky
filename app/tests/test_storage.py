@@ -1,7 +1,9 @@
 import sys
 import tempfile
+import threading
+import time
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -12,6 +14,10 @@ from fatiga_visual.core.models import (
     ExposureMetrics,
     Recommendation,
 )
+from fatiga_visual.core.config import Settings
+from fatiga_visual.core.events import EventBus
+from fatiga_visual.decision.engine import DecisionEngine
+from fatiga_visual.main import _start_storage
 from fatiga_visual.storage.database import Database
 from fatiga_visual.storage.repository import Repository
 
@@ -177,6 +183,59 @@ class StorageTests(unittest.TestCase):
         self.repo.end_session(self.session_id)
         summary = self.repo.session_summary(self.session_id)
         self.assertIsNotNone(summary["ended_at"])
+
+    def test_series_filter_by_time_range(self):
+        base = datetime(2026, 11, 27, 8, 0, 0)
+        for minute in (0, 10, 20, 30):
+            self.repo.record_blink(
+                BlinkMetrics(
+                    timestamp=base + timedelta(minutes=minute), blinks=minute, blink_rate=12.0
+                ),
+                self.session_id,
+            )
+        rows = self.repo.blink_series(
+            since=base + timedelta(minutes=10), until=base + timedelta(minutes=20)
+        )
+        self.assertEqual([row["blinks"] for row in rows], [10, 20])
+        self.assertEqual(len(self.repo.blink_series(since=base + timedelta(minutes=25))), 1)
+        self.assertEqual(len(self.repo.blink_series()), 4)
+
+
+class StorageWiringTests(unittest.TestCase):
+    """Motor -> bus -> hilo escritor -> SQLite, sin bloquear a quien publica."""
+
+    def test_recommendations_reach_storage_without_blocking(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "wiring.db"
+            settings = Settings({"storage": {"path": str(path)}, "runtime": {"source": "simulated"}})
+            bus = EventBus()
+            repository, _ = _start_storage(settings, bus)
+
+            gate = threading.Event()
+            original = repository.record_recommendation
+            repository.record_recommendation = lambda *a: (gate.wait(5), original(*a))
+
+            engine = DecisionEngine(settings, bus)
+            long_session = ExposureMetrics(
+                timestamp=datetime.now(),
+                session_seconds=25 * 60,
+                continuous_seconds=25 * 60,
+                breaks_taken=0,
+            )
+            started = time.perf_counter()
+            results = engine.evaluate(exposure=long_session)
+            self.assertLess(time.perf_counter() - started, 0.5)
+            self.assertTrue(results)
+
+            gate.set()
+            repository.stop()
+            stored = Repository(path=path)
+            try:
+                saved = stored.latest_recommendations()
+            finally:
+                stored.close()
+            self.assertEqual({row["id"] for row in saved}, {r.id for r in results})
+            self.assertTrue(all(row["severity"] and row["message"] for row in saved))
 
 
 if __name__ == "__main__":

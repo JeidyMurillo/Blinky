@@ -15,7 +15,9 @@ Ejecutar:
     python -m fatiga_visual.main
 """
 
+import queue
 import sys
+import threading
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -50,14 +52,32 @@ def _start_storage(settings, bus):
         print(f"Aviso: no se pudo abrir la base de datos: {exc}")
         return None, None
 
-    def safe(handler):
-        def wrapped(payload):
+    # Un solo hilo escribe en SQLite para no frenar al pipeline ni a la UI.
+    writes = queue.Queue()
+
+    def drain():
+        while True:
+            handler, payload = writes.get()
+            if handler is None:
+                return
             try:
                 handler(payload)
             except Exception:
                 pass
 
-        return wrapped
+    writer = threading.Thread(target=drain, name="storage-writer", daemon=True)
+    writer.start()
+
+    def stop():
+        writes.put((None, None))
+        writer.join(timeout=5.0)
+        repository.end_session(session_id)
+        repository.close()
+
+    repository.stop = stop
+
+    def safe(handler):
+        return lambda payload: writes.put((handler, payload))
 
     bus.subscribe(
         "blink.metrics",
@@ -172,8 +192,7 @@ def main():
         if mqtt_client is not None:
             mqtt_client.stop()
         if repository is not None:
-            repository.end_session(session_id)
-            repository.close()
+            repository.stop()
         if camera is not None:
             camera.stop()
 
