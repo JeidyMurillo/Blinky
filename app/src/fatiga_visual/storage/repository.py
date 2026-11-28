@@ -17,6 +17,13 @@ def _iso(value):
     return str(value)
 
 
+def _range(since, until):
+    """Parámetros (since, since, until, until) para filtrar por ts; None = sin límite."""
+    since = None if since is None else _iso(since)
+    until = None if until is None else _iso(until)
+    return since, since, until, until
+
+
 class Repository:
     def __init__(self, database=None, path=None):
         self.db = database if database is not None else Database(path)
@@ -132,7 +139,7 @@ class Repository:
             ),
         )
 
-    def blink_series(self, session_id=None, limit=1000):
+    def blink_series(self, session_id=None, limit=1000, since=None, until=None):
         target = self._sid(session_id)
         rows = self.db.query(
             """
@@ -141,28 +148,30 @@ class Repository:
                    long_closures, confidence, source
             FROM blink_samples
             WHERE (? IS NULL OR session_id = ?)
+              AND (? IS NULL OR ts >= ?) AND (? IS NULL OR ts <= ?)
             ORDER BY ts DESC
             LIMIT ?
             """,
-            (target, target, int(limit)),
+            (target, target, *_range(since, until), int(limit)),
         )
         return list(reversed(rows))
 
-    def ambient_series(self, session_id=None, limit=1000):
+    def ambient_series(self, session_id=None, limit=1000, since=None, until=None):
         target = self._sid(session_id)
         rows = self.db.query(
             """
             SELECT id, session_id, ts, lux, temperature_c, humidity, connected
             FROM ambient_samples
             WHERE (? IS NULL OR session_id = ?)
+              AND (? IS NULL OR ts >= ?) AND (? IS NULL OR ts <= ?)
             ORDER BY ts DESC
             LIMIT ?
             """,
-            (target, target, int(limit)),
+            (target, target, *_range(since, until), int(limit)),
         )
         return list(reversed(rows))
 
-    def exposure_series(self, session_id=None, limit=1000):
+    def exposure_series(self, session_id=None, limit=1000, since=None, until=None):
         target = self._sid(session_id)
         rows = self.db.query(
             """
@@ -170,10 +179,11 @@ class Repository:
                    breaks_taken, break_due
             FROM exposure_samples
             WHERE (? IS NULL OR session_id = ?)
+              AND (? IS NULL OR ts >= ?) AND (? IS NULL OR ts <= ?)
             ORDER BY ts DESC
             LIMIT ?
             """,
-            (target, target, int(limit)),
+            (target, target, *_range(since, until), int(limit)),
         )
         return list(reversed(rows))
 
