@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ from fatiga_visual.core.events import EventBus
 from fatiga_visual.core.models import AmbientReading, BlinkMetrics, ExposureMetrics
 from fatiga_visual.decision import rules
 from fatiga_visual.decision.engine import DecisionEngine
+from fatiga_visual.storage.repository import Repository
 
 # Mapping completo: las reglas ya no tienen fallbacks numéricos propios.
 THRESHOLDS = dict(Settings({}).section("thresholds"))
@@ -233,6 +235,34 @@ class EngineTests(unittest.TestCase):
         self.settings = Settings(
             {"thresholds": THRESHOLDS, "mqtt": {"topics": {"ambient": "fatiga/ambient"}}}
         )
+
+    def test_alerts_reach_ui_and_storage_with_valid_payload(self):
+        """SCRUM-33: UI y storage reciben la alerta una vez, respetando el cooldown."""
+        bus = EventBus()
+        ui_received = []
+        bus.subscribe("decision.recommendation", ui_received.append)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = Repository(path=Path(temp_dir) / "alerts.db")
+            try:
+                bus.subscribe("decision.recommendation", repository.record_recommendation)
+                engine = DecisionEngine(self.settings, bus, cooldown_seconds=300)
+                start = datetime(2026, 11, 27, 8, 0, 0)
+                for seconds in (0, 60):
+                    engine.evaluate(
+                        None, exposure(25), ambient(lux=150), now=start + timedelta(seconds=seconds)
+                    )
+                saved = repository.latest_recommendations()
+            finally:
+                repository.close()
+
+        self.assertTrue(ui_received)
+        ids = [r.id for r in ui_received]
+        self.assertEqual(len(ids), len(set(ids)), "el cooldown debe evitar repetidas")
+        for recommendation in ui_received:
+            self.assertIn(recommendation.severity, ("low", "medium", "high"))
+            self.assertTrue(recommendation.message)
+            self.assertIsInstance(recommendation.created_at, datetime)
+        self.assertEqual({row["id"] for row in saved}, set(ids))
 
     def test_emits_and_publishes(self):
         bus = EventBus()
